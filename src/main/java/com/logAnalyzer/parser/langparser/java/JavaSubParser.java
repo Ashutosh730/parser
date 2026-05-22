@@ -1,4 +1,4 @@
-package com.logAnalyzer.parser.java;
+package com.logAnalyzer.parser.langparser.java;
 
 import com.logAnalyzer.parser.model.parsed.ParsedLog;
 

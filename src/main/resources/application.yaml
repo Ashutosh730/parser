@@ -10,16 +10,23 @@ spring:
     hibernate:
       ddl-auto: update
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-  kafka:
-    bootstrap-servers: localhost:9092
-    consumer:
-      group-id: log-consumer-group
-      auto-offset-reset: latest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      batch-listener: true
-      common-error-handler: true
-      max-poll-records: 50
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  jackson:
+    time-zone: UTC
+#  kafka:
+#    bootstrap-servers: localhost:9092
+#    consumer:
+#      group-id: log-consumer-group
+#      auto-offset-reset: latest
+#      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+#      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+#      batch-listener: true
+#      common-error-handler: true
+#      max-poll-records: 50
+
+file:
+  upload-dir: ingestion/src/main/resources/uploads
 
 server:
   port: 8081

@@ -1,6 +1,6 @@
-package com.logAnalyzer.parser.java.subparser;
+package com.logAnalyzer.parser.langparser.java.subparser;
 
-import com.logAnalyzer.parser.java.JavaSubParser;
+import com.logAnalyzer.parser.langparser.java.JavaSubParser;
 import com.logAnalyzer.parser.model.parsed.ParsedLog;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -8,9 +8,9 @@ import org.springframework.stereotype.Component;
 import java.util.regex.Pattern;
 
 @Component
-public class SpringBootParser implements JavaSubParser {
+public class SimpleJavaParser implements JavaSubParser {
 
-    @Value("${log.format.java.spring-boot}")
+    @Value("${log.format.java.simple-java}")
     private String logFormat;
 
     @Override

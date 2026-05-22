@@ -1,4 +1,4 @@
-package com.logAnalyzer.parser.python;
+package com.logAnalyzer.parser.langparser.python;
 
 import com.logAnalyzer.parser.core.LogParser;
 import com.logAnalyzer.parser.model.parsed.ParsedLog;

@@ -1,4 +1,4 @@
-package com.logAnalyzer.parser.python;
+package com.logAnalyzer.parser.langparser.python;
 
 public interface PythonSubParser {
     boolean canParse(String logEntry);

@@ -1,6 +1,6 @@
-package com.logAnalyzer.parser.java.subparser;
+package com.logAnalyzer.parser.langparser.java.subparser;
 
-import com.logAnalyzer.parser.java.JavaSubParser;
+import com.logAnalyzer.parser.langparser.java.JavaSubParser;
 import com.logAnalyzer.parser.model.parsed.ParsedLog;
 
 public class Log4jParser implements JavaSubParser {
