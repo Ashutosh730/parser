@@ -1,6 +1,6 @@
-package com.logAnalyzer.parser.langparser.java.subparser;
+package com.logAnalyzer.parser.core.langparser.java.subparser;
 
-import com.logAnalyzer.parser.langparser.java.JavaSubParser;
+import com.logAnalyzer.parser.core.langparser.java.JavaSubParser;
 import com.logAnalyzer.parser.model.parsed.ParsedLog;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

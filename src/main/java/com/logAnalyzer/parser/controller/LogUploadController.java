@@ -21,9 +21,9 @@ public class LogUploadController {
 
     @PostMapping(value = "/logs/upload", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<SessionResponse> upload(@RequestParam MultipartFile file) {
-        String storagePath = storageService.upload(file);
-        String sessionId = sessionService.create(file.getOriginalFilename(), storagePath);
-        pipelineService.processAsync(sessionId, storagePath);
+        String logFilePath = storageService.upload(file);
+        String sessionId = sessionService.create(file.getOriginalFilename(), logFilePath);
+        pipelineService.processFile(sessionId, logFilePath);
         return ResponseEntity.accepted().body(new SessionResponse("File uploaded successfully", file.getOriginalFilename(), sessionId));
     }
 }

@@ -1,4 +1,4 @@
-package com.logAnalyzer.parser.langparser.java;
+package com.logAnalyzer.parser.core.langparser.java;
 
 import com.logAnalyzer.parser.core.LogParser;
 import com.logAnalyzer.parser.model.parsed.ParsedLog;
@@ -14,8 +14,16 @@ public class JavaLogParser implements LogParser {
     private final List<JavaSubParser> javaSubParser;
 
     @Override
-    public boolean canParse(String logLine) {
-
+    public boolean isParsable(List<String> logLines) {
+        for(String line : logLines) {
+            if (canParse(line)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    private boolean canParse(String logLine) {
         if (logLine == null) return false;
 
         // Spring Boot pattern hint
@@ -29,11 +37,8 @@ public class JavaLogParser implements LogParser {
         }
 
         // Log4j style
-        if (logLine.matches(".*\\d{4}-\\d{2}-\\d{2}.*\\[.*\\].*-.*")) {
-            return true;
-        }
+        return logLine.matches(".*\\d{4}-\\d{2}-\\d{2}.*\\[.*].*-.*");
 
-        return false;
     }
 
     @Override
@@ -43,6 +48,17 @@ public class JavaLogParser implements LogParser {
                 .findFirst()
                 .orElse(fallBackParse(logLine))
                 .parse(logLine);
+    }
+
+    @Override
+    public boolean isPrimaryLine(String line) {
+        if (line == null || line.isBlank()) return false;
+        // Stack trace continuation — definitely NOT a primary line
+        if (line.startsWith("\tat ")) return false;
+        if (line.startsWith("Caused by:")) return false;
+        if (line.startsWith("\t... ")) return false;
+        // If it matches a timestamp at the start — it's a new log event
+        return canParse(line);
     }
 
     private JavaSubParser fallBackParse(String logLine) {

@@ -33,6 +33,6 @@ public class LocalStorageServiceImpl implements StorageService {
             throw new RuntimeException(e);
         }
 
-        return fileName;
+        return uploadDir.getFileName().toString() + "/" + fileName;
     }
 }

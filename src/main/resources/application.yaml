@@ -26,7 +26,7 @@ spring:
 #      max-poll-records: 50
 
 file:
-  upload-dir: ingestion/src/main/resources/uploads
+  upload-dir: parser/src/main/resources/uploads
 
 server:
   port: 8081
