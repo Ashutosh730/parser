@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,11 +20,11 @@ public class LogPipelineService {
 
     private final LogParserFactory logParserFactory;
 
-    public void processFile(String sessionId, String logFilePath) {
-        log.debug("Processing file for sessionId={}, path={}", sessionId, logFilePath);
+    public void processFile(String sessionId, Path logFilePath) {
+        log.debug("Processing file for sessionId = {}, path = {}", sessionId, logFilePath);
 
         LogParser parser = null;
-        try (BufferedReader reader = new BufferedReader(new FileReader(logFilePath))) {
+        try (BufferedReader reader = Files.newBufferedReader(logFilePath)) {
             String line;
             List<String> sampleLines = new ArrayList<>();
             StringBuilder prevPrimaryLine = new StringBuilder();
@@ -58,6 +60,7 @@ public class LogPipelineService {
             if (parser != null && !prevPrimaryLine.isEmpty()) {
                 parser.parse(prevPrimaryLine.toString());
             }
+            log.info("Finished processing file for sessionId = {}", sessionId);
         } catch (IOException e) {
             log.error("Error processing log file: {}", e.getMessage());
         }

@@ -10,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Path;
+
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -21,8 +23,8 @@ public class LogUploadController {
 
     @PostMapping(value = "/logs/upload", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<SessionResponse> upload(@RequestParam MultipartFile file) {
-        String logFilePath = storageService.upload(file);
-        String sessionId = sessionService.create(file.getOriginalFilename(), logFilePath);
+        Path logFilePath = storageService.upload(file);
+        String sessionId = sessionService.create(file.getOriginalFilename(), logFilePath.getFileName().toString());
         pipelineService.processFile(sessionId, logFilePath);
         return ResponseEntity.accepted().body(new SessionResponse("File uploaded successfully", file.getOriginalFilename(), sessionId));
     }

@@ -21,18 +21,19 @@ public class LocalStorageServiceImpl implements StorageService {
     public final FileStorageConfig fileStorageConfig;
 
     @Override
-    public String upload(MultipartFile file) {
+    public Path upload(MultipartFile file) {
         String fileName = LogFileUtil.generateUniqueFileName(Objects.requireNonNull(file.getOriginalFilename()));
 
         Path uploadDir = Paths.get(System.getProperty("user.dir"), fileStorageConfig.getUploadDir());
+        Path uploadPath = null;
         try {
             Files.createDirectories(uploadDir);
-            Path uploadPath = uploadDir.resolve(fileName);
+            uploadPath = uploadDir.resolve(fileName);
             Files.copy(file.getInputStream(), uploadPath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
-        return uploadDir.getFileName().toString() + "/" + fileName;
+        return uploadPath;
     }
 }
