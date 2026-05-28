@@ -2,11 +2,11 @@ package com.logAnalyzer.parser.service;
 
 import com.logAnalyzer.parser.core.LogParser;
 import com.logAnalyzer.parser.core.LogParserFactory;
+import com.logAnalyzer.parser.model.parsed.ParsedLog;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,8 +28,8 @@ public class LogPipelineService {
             String line;
             List<String> sampleLines = new ArrayList<>();
             StringBuilder prevPrimaryLine = new StringBuilder();
-            while ((line = reader.readLine()) != null) {
 
+            while ((line = reader.readLine()) != null) {
                 // Collect first 20 lines as sample for detection
                 if (sampleLines.size() < 20) {
                     sampleLines.add(line);
@@ -54,11 +54,15 @@ public class LogPipelineService {
             // Handle files with < 20 lines: get parser from available lines and flush final block
             if (parser == null && !sampleLines.isEmpty()) {
                 parser = logParserFactory.getParser(sampleLines);
+                for (String sampledLine : sampleLines) {
+                    handleSampledLine(parser, prevPrimaryLine, sampledLine);
+                }
             }
             
             // Flush the last accumulated primary line block
             if (parser != null && !prevPrimaryLine.isEmpty()) {
-                parser.parse(prevPrimaryLine.toString());
+                ParsedLog parsedLog = parser.parse(prevPrimaryLine.toString());
+                log.info("Final parsed log {}", parsedLog);
             }
             log.info("Finished processing file for sessionId = {}", sessionId);
         } catch (IOException e) {
@@ -66,22 +70,20 @@ public class LogPipelineService {
         }
     }
 
-    /**
-     * Handle a single sampled line: if it's a primary line, flush the previous
-     * accumulated primary block to the parser and start a new one. Otherwise,
-     * append to the current primary block, separating lines with a newline.
-     */
     private void handleSampledLine(LogParser parser, StringBuilder prevPrimaryLine, String sampledLine) {
         if (parser.isPrimaryLine(sampledLine)) {
             if (!prevPrimaryLine.isEmpty()) {
-                parser.parse(prevPrimaryLine.toString());
+                ParsedLog parsedLog = parser.parse(prevPrimaryLine.toString());
+                log.info("Parsed log {}", parsedLog);
             }
             prevPrimaryLine.setLength(0);
             prevPrimaryLine.append(sampledLine);
         } else {
-            if (!prevPrimaryLine.isEmpty()) {
-                prevPrimaryLine.append('\n');
+            // Ignore continuation/orphan lines until the first primary log event starts.
+            if (prevPrimaryLine.isEmpty()) {
+                return;
             }
+            prevPrimaryLine.append('\n');
             prevPrimaryLine.append(sampledLine);
         }
     }
