@@ -23,6 +23,7 @@ public class LogPipelineService {
 
     public void processFile(String sessionId, Path logFilePath) {
         log.debug("Processing file for sessionId = {}, path = {}", sessionId, logFilePath);
+        parsedLogs.clear();
 
         LogParser parser = null;
         try (BufferedReader reader = Files.newBufferedReader(logFilePath)) {
@@ -41,14 +42,14 @@ public class LogPipelineService {
 
                         // Process the sample lines we already collected
                         for (String sampledLine : sampleLines) {
-                            handleSampledLine(parser, prevPrimaryLine, sampledLine);
+                            handleSampleLine(parser, prevPrimaryLine, sampledLine);
                         }
                     }
                     continue; // Don't process sample lines again
                 }
             
                 if (parser != null) {
-                    handleSampledLine(parser, prevPrimaryLine, line);
+                    handleSampleLine(parser, prevPrimaryLine, line);
                 }
             }
 
@@ -56,7 +57,7 @@ public class LogPipelineService {
             if (parser == null && !sampleLines.isEmpty()) {
                 parser = logParserFactory.getParser(sampleLines);
                 for (String sampledLine : sampleLines) {
-                    handleSampledLine(parser, prevPrimaryLine, sampledLine);
+                    handleSampleLine(parser, prevPrimaryLine, sampledLine);
                 }
             }
             
@@ -68,13 +69,18 @@ public class LogPipelineService {
                     log.info("Final parsed log {}", parsedLog);
                 }
             }
+            processParsedLog();
             log.info("Finished processing file for sessionId = {}, \n total parsed logs = {}", sessionId, parsedLogs.size());
         } catch (IOException e) {
             log.error("Error processing log file: {}", e.getMessage());
         }
     }
 
-    private void handleSampledLine(LogParser parser, StringBuilder prevPrimaryLine, String sampledLine) {
+    private void processParsedLog() {
+
+    }
+
+    private void handleSampleLine(LogParser parser, StringBuilder prevPrimaryLine, String sampledLine) {
         if (parser.isPrimaryLine(sampledLine)) {
             if (!prevPrimaryLine.isEmpty()) {
                 ParsedLog parsedLog = parser.parse(prevPrimaryLine.toString());

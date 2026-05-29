@@ -1,6 +1,7 @@
 package com.logAnalyzer.parser.core.langparser.java.subparser;
 
 import com.logAnalyzer.parser.core.langparser.java.JavaSubParser;
+import com.logAnalyzer.parser.enums.LogLevel;
 import com.logAnalyzer.parser.model.parsed.ParsedLog;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -32,7 +33,7 @@ public class SimpleJavaParser implements JavaSubParser {
             String message = matcher.group("message");
             return ParsedLog.builder()
                     .timestamp(timestamp)
-                    .level(level)
+                    .level(LogLevel.valueOf(level))
                     .thread(thread)
                     .className(className)
                     .message(message)

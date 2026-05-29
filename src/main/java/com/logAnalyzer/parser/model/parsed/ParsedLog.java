@@ -1,5 +1,6 @@
 package com.logAnalyzer.parser.model.parsed;
 
+import com.logAnalyzer.parser.enums.LogLevel;
 import lombok.Builder;
 import lombok.Data;
 
@@ -8,7 +9,7 @@ import lombok.Data;
 public class ParsedLog {
 
     private String timestamp;
-    private String level;
+    private LogLevel level;
     private String thread;
     private String className;
     private String message;
