@@ -19,6 +19,7 @@ import java.util.List;
 public class LogPipelineService {
 
     private final LogParserFactory logParserFactory;
+    private final List<ParsedLog> parsedLogs = new ArrayList<>();
 
     public void processFile(String sessionId, Path logFilePath) {
         log.debug("Processing file for sessionId = {}, path = {}", sessionId, logFilePath);
@@ -62,9 +63,12 @@ public class LogPipelineService {
             // Flush the last accumulated primary line block
             if (parser != null && !prevPrimaryLine.isEmpty()) {
                 ParsedLog parsedLog = parser.parse(prevPrimaryLine.toString());
-                log.info("Final parsed log {}", parsedLog);
+                if (parsedLog != null) {
+                    parsedLogs.add(parsedLog);
+                    log.info("Final parsed log {}", parsedLog);
+                }
             }
-            log.info("Finished processing file for sessionId = {}", sessionId);
+            log.info("Finished processing file for sessionId = {}, \n total parsed logs = {}", sessionId, parsedLogs.size());
         } catch (IOException e) {
             log.error("Error processing log file: {}", e.getMessage());
         }
@@ -74,7 +78,10 @@ public class LogPipelineService {
         if (parser.isPrimaryLine(sampledLine)) {
             if (!prevPrimaryLine.isEmpty()) {
                 ParsedLog parsedLog = parser.parse(prevPrimaryLine.toString());
-                log.info("Parsed log {}", parsedLog);
+                if (parsedLog != null) {
+                    parsedLogs.add(parsedLog);
+                    log.info("Parsed log: {}", parsedLog);
+                }
             }
             prevPrimaryLine.setLength(0);
             prevPrimaryLine.append(sampledLine);
