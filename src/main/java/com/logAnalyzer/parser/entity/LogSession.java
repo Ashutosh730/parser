@@ -1,4 +1,4 @@
-package com.logAnalyzer.parser.model;
+package com.logAnalyzer.parser.entity;
 
 import com.logAnalyzer.parser.enums.DetectedFramework;
 import com.logAnalyzer.parser.enums.DetectedLanguage;
@@ -20,7 +20,7 @@ public class LogSession {
     @Column(name = "id", length = 36, nullable = false)
     private String id;
 
-    @Column(name = "file_name", length = 255)
+    @Column(name = "file_name")
     private String fileName;
 
     @Column(name = "storage_path", length = 500)
@@ -32,9 +32,6 @@ public class LogSession {
 
     @Column(name = "uploaded_at")
     private LocalDateTime uploadedAt;
-
-    @Column(name = "processing_started_at")
-    private LocalDateTime processingStartedAt;
 
     @Column(name = "completed_at")
     private LocalDateTime completedAt;

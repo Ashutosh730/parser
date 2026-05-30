@@ -4,6 +4,7 @@ import com.logAnalyzer.parser.model.SessionResponse;
 import com.logAnalyzer.parser.service.LogPipelineService;
 import com.logAnalyzer.parser.service.impl.LocalStorageServiceImpl;
 import com.logAnalyzer.parser.service.impl.LogSessionServiceImpl;
+import com.logAnalyzer.parser.util.LogFileUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,10 @@ public class LogUploadController {
 
     @PostMapping(value = "/logs/upload", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<SessionResponse> upload(@RequestParam MultipartFile file) {
+        String result = LogFileUtil.validateFile(file);
+        if(result != null) {
+            return ResponseEntity.badRequest().body(new SessionResponse(file.getName(), result, null));
+        }
         Path logFilePath = storageService.upload(file);
         String sessionId = sessionService.create(file.getOriginalFilename(), logFilePath.getFileName().toString());
         pipelineService.processFile(sessionId, logFilePath);

@@ -2,7 +2,10 @@ package com.logAnalyzer.parser.service;
 
 import com.logAnalyzer.parser.core.LogParser;
 import com.logAnalyzer.parser.core.LogParserFactory;
+import com.logAnalyzer.parser.enums.LogSessionStatus;
+import com.logAnalyzer.parser.entity.LogSession;
 import com.logAnalyzer.parser.model.parsed.ParsedLog;
+import com.logAnalyzer.parser.service.impl.LogSessionServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +22,7 @@ import java.util.List;
 public class LogPipelineService {
 
     private final LogParserFactory logParserFactory;
+    private final LogSessionServiceImpl logSessionService;
     private final List<ParsedLog> parsedLogs = new ArrayList<>();
 
     public void processFile(String sessionId, Path logFilePath) {
@@ -69,15 +73,30 @@ public class LogPipelineService {
                     log.info("Final parsed log {}", parsedLog);
                 }
             }
-            processParsedLog();
+            processParsedLog(sessionId);
             log.info("Finished processing file for sessionId = {}, \n total parsed logs = {}", sessionId, parsedLogs.size());
         } catch (IOException e) {
             log.error("Error processing log file: {}", e.getMessage());
         }
     }
 
-    private void processParsedLog() {
-
+    private void processParsedLog(String sessionId) {
+        try {
+            log.info("Successfully processed {} parsed logs for sessionId = {}", parsedLogs.size(), sessionId);
+            LogSession logSession = LogSession.builder()
+                    .id(sessionId)
+                    .status(LogSessionStatus.COMPLETED)
+                    .build();
+            logSessionService.updateStatus(logSession);
+        } catch (Exception e) {
+            log.error("Error persisting parsed logs for sessionId = {}: {}", sessionId, e.getMessage());
+            LogSession logSession = LogSession.builder()
+                    .id(sessionId)
+                    .failureReason("Error persisting parsed logs: " + e.getMessage())
+                    .status(LogSessionStatus.FAILED)
+                    .build();
+            logSessionService.updateStatus(logSession);
+        }
     }
 
     private void handleSampleLine(LogParser parser, StringBuilder prevPrimaryLine, String sampledLine) {

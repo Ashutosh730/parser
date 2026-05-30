@@ -2,7 +2,7 @@ package com.logAnalyzer.parser.enums;
 
 public enum LogSessionStatus {
     PENDING,
-    PROCESSING,
+    IN_PROGRESS,
     COMPLETED,
     FAILED
 }
