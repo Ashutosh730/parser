@@ -4,8 +4,12 @@ import com.logAnalyzer.parser.core.LogParser;
 import com.logAnalyzer.parser.core.LogParserFactory;
 import com.logAnalyzer.parser.enums.LogSessionStatus;
 import com.logAnalyzer.parser.entity.LogSession;
+import com.logAnalyzer.parser.mapper.ParsedLogMapper;
+import com.logAnalyzer.parser.model.parsed.LogEvent;
 import com.logAnalyzer.parser.model.parsed.ParsedLog;
+import com.logAnalyzer.parser.repository.LogEventRepository;
 import com.logAnalyzer.parser.service.impl.LogSessionServiceImpl;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -24,6 +29,7 @@ public class LogPipelineService {
     private final LogParserFactory logParserFactory;
     private final LogSessionServiceImpl logSessionService;
     private final List<ParsedLog> parsedLogs = new ArrayList<>();
+    private final LogEventRepository logEventRepository;
 
     public void processFile(String sessionId, Path logFilePath) {
         log.debug("Processing file for sessionId = {}, path = {}", sessionId, logFilePath);
@@ -80,16 +86,33 @@ public class LogPipelineService {
         }
     }
 
+    @Transactional
     private void processParsedLog(String sessionId) {
         try {
-            log.info("Successfully processed {} parsed logs for sessionId = {}", parsedLogs.size(), sessionId);
+            if (parsedLogs.isEmpty()) {
+                log.warn("No parsed logs found for sessionId = {}", sessionId);
+                LogSession logSession = LogSession.builder()
+                        .id(sessionId)
+                        .status(LogSessionStatus.COMPLETED)
+                        .build();
+                logSessionService.updateStatus(logSession);
+                return;
+            }
+
+            List<LogEvent> events = parsedLogs.stream()
+                    .map(p -> ParsedLogMapper.toEntity(p, sessionId))
+                    .collect(Collectors.toList());
+
+            logEventRepository.saveAll(events);
+
+            log.info("Successfully persisted {} parsed logs for sessionId = {}", events.size(), sessionId);
             LogSession logSession = LogSession.builder()
                     .id(sessionId)
                     .status(LogSessionStatus.COMPLETED)
                     .build();
             logSessionService.updateStatus(logSession);
         } catch (Exception e) {
-            log.error("Error persisting parsed logs for sessionId = {}: {}", sessionId, e.getMessage());
+            log.error("Error persisting parsed logs for sessionId = {}: {}", sessionId, e.getMessage(), e);
             LogSession logSession = LogSession.builder()
                     .id(sessionId)
                     .failureReason("Error persisting parsed logs: " + e.getMessage())
