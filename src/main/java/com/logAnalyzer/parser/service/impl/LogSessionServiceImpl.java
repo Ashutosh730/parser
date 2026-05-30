@@ -38,7 +38,13 @@ public class LogSessionServiceImpl implements SessionService {
                 }
                 case COMPLETED -> {
                     session.setStatus(LogSessionStatus.COMPLETED);
-                    log.info("Session {} is now COMPLETED", session.getId());
+                    session.setTotalLines(logSession.getTotalLines());
+                    session.setErrorCount(logSession.getErrorCount());
+                    session.setWarnCount(logSession.getWarnCount());
+                    session.setDetectedFramework(logSession.getDetectedFramework());
+                    session.setDetectedLanguage(logSession.getDetectedLanguage());
+                    log.info("Session {} is now COMPLETED with totalLines={}, errorCount={}, warnCount={}, detectedFramework={}, detectedLanguage={}",
+                            session.getId(), session.getTotalLines(), session.getErrorCount(), session.getWarnCount(), session.getDetectedFramework(), session.getDetectedLanguage());
                 }
                 case FAILED -> {
                     session.setStatus(LogSessionStatus.FAILED);

@@ -2,6 +2,9 @@ package com.logAnalyzer.parser.service;
 
 import com.logAnalyzer.parser.core.LogParser;
 import com.logAnalyzer.parser.core.LogParserFactory;
+import com.logAnalyzer.parser.enums.DetectedFramework;
+import com.logAnalyzer.parser.enums.DetectedLanguage;
+import com.logAnalyzer.parser.enums.LogLevel;
 import com.logAnalyzer.parser.enums.LogSessionStatus;
 import com.logAnalyzer.parser.entity.LogSession;
 import com.logAnalyzer.parser.mapper.ParsedLogMapper;
@@ -9,6 +12,7 @@ import com.logAnalyzer.parser.model.parsed.LogEvent;
 import com.logAnalyzer.parser.model.parsed.ParsedLog;
 import com.logAnalyzer.parser.repository.LogEventRepository;
 import com.logAnalyzer.parser.service.impl.LogSessionServiceImpl;
+import com.logAnalyzer.parser.util.ParserUtil;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -49,13 +54,11 @@ public class LogPipelineService {
                     // Once we have enough — detect language and get detector
                     if (sampleLines.size() == 20) {
                         parser = logParserFactory.getParser(sampleLines);
-
-                        // Process the sample lines we already collected
                         for (String sampledLine : sampleLines) {
                             handleSampleLine(parser, prevPrimaryLine, sampledLine);
                         }
                     }
-                    continue; // Don't process sample lines again
+                    continue;
                 }
             
                 if (parser != null) {
@@ -79,7 +82,14 @@ public class LogPipelineService {
                     log.info("Final parsed log {}", parsedLog);
                 }
             }
-            processParsedLog(sessionId);
+            DetectedLanguage language = ParserUtil.getDetectedLanguage(parser.getClass().getSimpleName());
+            DetectedFramework framework = parsedLogs.stream()
+                    .map(ParsedLog::getFramework)
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .orElse(DetectedFramework.UNKNOWN);
+
+            processParsedLog(sessionId, framework, language);
             log.info("Finished processing file for sessionId = {}, \n total parsed logs = {}", sessionId, parsedLogs.size());
         } catch (IOException e) {
             log.error("Error processing log file: {}", e.getMessage());
@@ -87,7 +97,7 @@ public class LogPipelineService {
     }
 
     @Transactional
-    private void processParsedLog(String sessionId) {
+    private void processParsedLog(String sessionId, DetectedFramework framework, DetectedLanguage language) {
         try {
             if (parsedLogs.isEmpty()) {
                 log.warn("No parsed logs found for sessionId = {}", sessionId);
@@ -102,13 +112,17 @@ public class LogPipelineService {
             List<LogEvent> events = parsedLogs.stream()
                     .map(p -> ParsedLogMapper.toEntity(p, sessionId))
                     .collect(Collectors.toList());
-
             logEventRepository.saveAll(events);
 
             log.info("Successfully persisted {} parsed logs for sessionId = {}", events.size(), sessionId);
             LogSession logSession = LogSession.builder()
                     .id(sessionId)
+                    .totalLines(events.size())
+                    .errorCount((int) events.stream().filter(e -> LogLevel.ERROR.equals(e.getLevel())).count())
+                    .warnCount((int) events.stream().filter(e -> LogLevel.WARN.equals(e.getLevel())).count())
                     .status(LogSessionStatus.COMPLETED)
+                    .detectedFramework(framework)
+                    .detectedLanguage(language)
                     .build();
             logSessionService.updateStatus(logSession);
         } catch (Exception e) {
@@ -134,7 +148,6 @@ public class LogPipelineService {
             prevPrimaryLine.setLength(0);
             prevPrimaryLine.append(sampledLine);
         } else {
-            // Ignore continuation/orphan lines until the first primary log event starts.
             if (prevPrimaryLine.isEmpty()) {
                 return;
             }

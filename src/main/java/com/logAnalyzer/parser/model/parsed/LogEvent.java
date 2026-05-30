@@ -25,7 +25,6 @@ public class LogEvent {
     @Column(name = "session_id", length = 36, nullable = false)
     private String sessionId;
 
-    // keep original timestamp as string to avoid parsing issues; can be converted later
     @Column(name = "log_timestamp")
     private String logTimestamp;
 

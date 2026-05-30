@@ -1,6 +1,7 @@
 package com.logAnalyzer.parser.core.langparser.java.subparser;
 
 import com.logAnalyzer.parser.core.langparser.java.JavaSubParser;
+import com.logAnalyzer.parser.enums.DetectedFramework;
 import com.logAnalyzer.parser.enums.LogLevel;
 import com.logAnalyzer.parser.model.parsed.ParsedLog;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,6 +49,7 @@ public class SpringBootParser implements JavaSubParser {
                     .className(className)
                     .message(message)
                     .pid(pid)
+                    .framework(DetectedFramework.SPRING_BOOT)
                     .build();
         }
         return ParsedLog.builder().rawLog(logLine).build();
