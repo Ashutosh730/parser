@@ -2,7 +2,7 @@ package com.logAnalyzer.parser.service.impl;
 
 import com.logAnalyzer.parser.enums.LogSessionStatus;
 import com.logAnalyzer.parser.entity.LogSession;
-import com.logAnalyzer.parser.repository.SessionRepository;
+import com.logAnalyzer.parser.repository.LogSessionRepository;
 import com.logAnalyzer.parser.service.SessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class LogSessionServiceImpl implements SessionService {
 
-    private final SessionRepository sessionRepository;
+    private final LogSessionRepository logSessionRepository;
 
     public String create(String originalFilename, String storagePath) {
         LogSession session = LogSession.builder()
@@ -25,12 +25,12 @@ public class LogSessionServiceImpl implements SessionService {
                 .status(LogSessionStatus.PENDING)
                 .uploadedAt(LocalDateTime.now())
                 .build();
-        sessionRepository.save(session);
+        logSessionRepository.save(session);
         return session.getId();
     }
 
     public void updateStatus(LogSession logSession) {
-        sessionRepository.findById(logSession.getId()).ifPresent(session -> {
+        logSessionRepository.findById(logSession.getId()).ifPresent(session -> {
             switch (logSession.getStatus()) {
                 case IN_PROGRESS -> {
                     session.setStatus(LogSessionStatus.IN_PROGRESS);
@@ -53,7 +53,7 @@ public class LogSessionServiceImpl implements SessionService {
                 }
             }
             session.setCompletedAt(LocalDateTime.now());
-            sessionRepository.save(session);
+            logSessionRepository.save(session);
         });
     }
 }

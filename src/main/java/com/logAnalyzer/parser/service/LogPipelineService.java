@@ -8,9 +8,9 @@ import com.logAnalyzer.parser.enums.LogLevel;
 import com.logAnalyzer.parser.enums.LogSessionStatus;
 import com.logAnalyzer.parser.entity.LogSession;
 import com.logAnalyzer.parser.mapper.ParsedLogMapper;
-import com.logAnalyzer.parser.model.parsed.LogEvent;
+import com.logAnalyzer.parser.entity.LogEntryDocument;
 import com.logAnalyzer.parser.model.parsed.ParsedLog;
-import com.logAnalyzer.parser.repository.LogEventRepository;
+import com.logAnalyzer.parser.repository.LogEntryEsRepository;
 import com.logAnalyzer.parser.service.impl.LogSessionServiceImpl;
 import com.logAnalyzer.parser.util.ParserUtil;
 import jakarta.transaction.Transactional;
@@ -34,7 +34,7 @@ public class LogPipelineService {
     private final LogParserFactory logParserFactory;
     private final LogSessionServiceImpl logSessionService;
     private final List<ParsedLog> parsedLogs = new ArrayList<>();
-    private final LogEventRepository logEventRepository;
+    private final LogEntryEsRepository logEntryEsRepository;
 
     public void processFile(String sessionId, Path logFilePath) {
         log.debug("Processing file for sessionId = {}, path = {}", sessionId, logFilePath);
@@ -82,7 +82,9 @@ public class LogPipelineService {
                     log.info("Final parsed log {}", parsedLog);
                 }
             }
-            DetectedLanguage language = ParserUtil.getDetectedLanguage(parser.getClass().getSimpleName());
+            DetectedLanguage language = (parser != null) 
+                    ? ParserUtil.getDetectedLanguage(parser.getClass().getSimpleName())
+                    : DetectedLanguage.UNKNOWN;
             DetectedFramework framework = parsedLogs.stream()
                     .map(ParsedLog::getFramework)
                     .filter(Objects::nonNull)
@@ -109,17 +111,19 @@ public class LogPipelineService {
                 return;
             }
 
-            List<LogEvent> events = parsedLogs.stream()
+            List<LogEntryDocument> logEntries = parsedLogs.stream()
                     .map(p -> ParsedLogMapper.toEntity(p, sessionId))
                     .collect(Collectors.toList());
-            logEventRepository.saveAll(events);
+            
+            // Batch save to Elasticsearch
+            logEntryEsRepository.saveAll(logEntries);
+            log.info("Successfully persisted {} parsed logs to Elasticsearch for sessionId = {}", logEntries.size(), sessionId);
 
-            log.info("Successfully persisted {} parsed logs for sessionId = {}", events.size(), sessionId);
             LogSession logSession = LogSession.builder()
                     .id(sessionId)
-                    .totalLines(events.size())
-                    .errorCount((int) events.stream().filter(e -> LogLevel.ERROR.equals(e.getLevel())).count())
-                    .warnCount((int) events.stream().filter(e -> LogLevel.WARN.equals(e.getLevel())).count())
+                    .totalLines(logEntries.size())
+                    .errorCount((int) logEntries.stream().filter(e -> LogLevel.ERROR.equals(e.getLevel())).count())
+                    .warnCount((int) logEntries.stream().filter(e -> LogLevel.WARN.equals(e.getLevel())).count())
                     .status(LogSessionStatus.COMPLETED)
                     .detectedFramework(framework)
                     .detectedLanguage(language)

@@ -1,15 +1,15 @@
 package com.logAnalyzer.parser.mapper;
 
-import com.logAnalyzer.parser.model.parsed.LogEvent;
+import com.logAnalyzer.parser.entity.LogEntryDocument;
 import com.logAnalyzer.parser.model.parsed.ParsedLog;
 
 public final class ParsedLogMapper {
 
     private ParsedLogMapper() {}
 
-    public static LogEvent toEntity(ParsedLog dto, String sessionId) {
+    public static LogEntryDocument toEntity(ParsedLog dto, String sessionId) {
         if (dto == null) return null;
-        return LogEvent.builder()
+        return LogEntryDocument.builder()
                 .id(null)
                 .sessionId(sessionId)
                 .logTimestamp(dto.getTimestamp())

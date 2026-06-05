@@ -12,6 +12,8 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     properties:
       hibernate.jdbc.time_zone: UTC
+  elasticsearch:
+    uris: http://localhost:9200
   jackson:
     time-zone: UTC
 #  kafka:
