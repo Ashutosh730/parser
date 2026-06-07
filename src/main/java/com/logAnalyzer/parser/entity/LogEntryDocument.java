@@ -23,7 +23,7 @@ public class LogEntryDocument {
     private String id;
 
     private String sessionId;
-    private String logTimestamp;
+    private LocalDateTime logTimestamp;
 
     private LogLevel level;
 

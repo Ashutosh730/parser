@@ -146,7 +146,6 @@ public class LogPipelineService {
                 ParsedLog parsedLog = parser.parse(prevPrimaryLine.toString());
                 if (parsedLog != null) {
                     parsedLogs.add(parsedLog);
-                    log.info("Parsed log: {}", parsedLog);
                 }
             }
             prevPrimaryLine.setLength(0);

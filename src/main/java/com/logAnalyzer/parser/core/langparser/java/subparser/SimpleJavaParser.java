@@ -6,6 +6,7 @@ import com.logAnalyzer.parser.model.parsed.ParsedLog;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 
 @Component
@@ -32,7 +33,7 @@ public class SimpleJavaParser implements JavaSubParser {
             String pid = matcher.group("pid");
             String message = matcher.group("message");
             return ParsedLog.builder()
-                    .timestamp(timestamp)
+                    .timestamp(LocalDateTime.parse(timestamp))
                     .level(LogLevel.valueOf(level))
                     .thread(thread)
                     .className(className)
