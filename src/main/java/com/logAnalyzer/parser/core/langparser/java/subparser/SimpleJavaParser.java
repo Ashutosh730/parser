@@ -2,7 +2,7 @@ package com.logAnalyzer.parser.core.langparser.java.subparser;
 
 import com.logAnalyzer.parser.core.langparser.java.JavaSubParser;
 import com.logAnalyzer.parser.enums.LogLevel;
-import com.logAnalyzer.parser.model.parsed.ParsedLog;
+import com.logAnalyzer.parser.model.ParsedLog;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 

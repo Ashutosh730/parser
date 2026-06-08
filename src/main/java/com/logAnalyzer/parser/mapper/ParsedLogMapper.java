@@ -1,7 +1,7 @@
 package com.logAnalyzer.parser.mapper;
 
 import com.logAnalyzer.parser.entity.LogEntryDocument;
-import com.logAnalyzer.parser.model.parsed.ParsedLog;
+import com.logAnalyzer.parser.model.ParsedLog;
 
 public final class ParsedLogMapper {
 

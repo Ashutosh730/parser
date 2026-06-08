@@ -29,6 +29,7 @@ spring:
 
 file:
   upload-dir: parser/src/main/resources/uploads
+  secret: secret.yaml
 
 server:
   port: 8081

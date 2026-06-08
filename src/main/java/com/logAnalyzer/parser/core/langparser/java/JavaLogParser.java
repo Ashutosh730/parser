@@ -1,7 +1,7 @@
 package com.logAnalyzer.parser.core.langparser.java;
 
 import com.logAnalyzer.parser.core.LogParser;
-import com.logAnalyzer.parser.model.parsed.ParsedLog;
+import com.logAnalyzer.parser.model.ParsedLog;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

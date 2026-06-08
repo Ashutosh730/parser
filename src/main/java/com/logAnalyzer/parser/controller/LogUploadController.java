@@ -14,7 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Path;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/logs")
 @RequiredArgsConstructor
 public class LogUploadController {
 
@@ -22,7 +22,7 @@ public class LogUploadController {
     private final LogPipelineService pipelineService;
     private final LogSessionServiceImpl sessionService;
 
-    @PostMapping(value = "/logs/upload", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/upload", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<SessionResponse> upload(@RequestParam MultipartFile file) {
         String result = LogFileUtil.validateFile(file);
         if(result != null) {

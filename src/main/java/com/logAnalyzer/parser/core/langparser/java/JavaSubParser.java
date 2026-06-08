@@ -1,6 +1,6 @@
 package com.logAnalyzer.parser.core.langparser.java;
 
-import com.logAnalyzer.parser.model.parsed.ParsedLog;
+import com.logAnalyzer.parser.model.ParsedLog;
 
 public interface JavaSubParser {
     boolean canParse(String logEntry);

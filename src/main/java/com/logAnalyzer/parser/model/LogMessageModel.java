@@ -1,4 +1,4 @@
-package com.logAnalyzer.parser.model.raw;
+package com.logAnalyzer.parser.model;
 
 import lombok.Data;
 import org.springframework.stereotype.Component;

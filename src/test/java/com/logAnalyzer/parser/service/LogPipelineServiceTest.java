@@ -2,7 +2,7 @@
 //
 //import com.logAnalyzer.parser.core.LogParser;
 //import com.logAnalyzer.parser.core.LogParserFactory;
-//import com.logAnalyzer.parser.model.parsed.ParsedLog;
+//import com.logAnalyzer.parser.model.ParsedLog;
 //import org.junit.jupiter.api.Test;
 //import org.junit.jupiter.api.io.TempDir;
 //import org.mockito.ArgumentCaptor;

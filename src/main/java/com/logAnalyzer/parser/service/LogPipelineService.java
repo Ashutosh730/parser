@@ -9,7 +9,7 @@ import com.logAnalyzer.parser.enums.LogSessionStatus;
 import com.logAnalyzer.parser.entity.LogSession;
 import com.logAnalyzer.parser.mapper.ParsedLogMapper;
 import com.logAnalyzer.parser.entity.LogEntryDocument;
-import com.logAnalyzer.parser.model.parsed.ParsedLog;
+import com.logAnalyzer.parser.model.ParsedLog;
 import com.logAnalyzer.parser.repository.LogEntryEsRepository;
 import com.logAnalyzer.parser.service.impl.LogSessionServiceImpl;
 import com.logAnalyzer.parser.util.ParserUtil;

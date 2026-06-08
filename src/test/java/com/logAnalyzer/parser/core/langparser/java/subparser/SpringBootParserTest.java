@@ -1,6 +1,6 @@
 //package com.logAnalyzer.parser.core.langparser.java.subparser;
 //
-//import com.logAnalyzer.parser.model.parsed.ParsedLog;
+//import com.logAnalyzer.parser.model.ParsedLog;
 //import org.junit.jupiter.api.Test;
 //import org.springframework.test.util.ReflectionTestUtils;
 //

@@ -1,8 +1,8 @@
 //package com.logAnalyzer.parser.service;
 //
 //import com.logAnalyzer.parser.core.LogParserFactory;
-//import com.logAnalyzer.parser.model.parsed.ParsedLog;
-//import com.logAnalyzer.parser.model.raw.LogMessageModel;
+//import com.logAnalyzer.parser.model.ParsedLog;
+//import com.logAnalyzer.parser.model.LogMessageModel;
 //import com.fasterxml.jackson.databind.ObjectMapper;
 //import lombok.RequiredArgsConstructor;
 //import lombok.extern.slf4j.Slf4j;

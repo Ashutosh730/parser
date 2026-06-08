@@ -1,6 +1,6 @@
 package com.logAnalyzer.parser.core;
 
-import com.logAnalyzer.parser.model.parsed.ParsedLog;
+import com.logAnalyzer.parser.model.ParsedLog;
 
 import java.util.List;
 

@@ -1,4 +1,4 @@
-package com.logAnalyzer.parser.model.parsed;
+package com.logAnalyzer.parser.model;
 
 import com.logAnalyzer.parser.enums.DetectedFramework;
 import com.logAnalyzer.parser.enums.LogLevel;
