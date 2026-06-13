@@ -16,6 +16,8 @@ spring:
     uris: http://localhost:9200
   jackson:
     time-zone: UTC
+  config:
+    import: optional:file:./secret.yaml
 #  kafka:
 #    bootstrap-servers: localhost:9092
 #    consumer:
@@ -29,7 +31,6 @@ spring:
 
 file:
   upload-dir: parser/src/main/resources/uploads
-  secret: secret.yaml
 
 server:
   port: 8081

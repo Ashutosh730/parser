@@ -12,4 +12,5 @@ public class LlmRequest {
     private int maxTokens;
     private float temperature;
     private LlmProviderEnum provider;
+    private String model;
 }

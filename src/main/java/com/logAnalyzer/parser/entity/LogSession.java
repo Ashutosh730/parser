@@ -55,8 +55,4 @@ public class LogSession {
 
     @Column(name = "failure_reason", length = 500)
     private String failureReason;
-
-    @Lob
-    @Column(name = "ai_summary")
-    private String aiSummary;
 }

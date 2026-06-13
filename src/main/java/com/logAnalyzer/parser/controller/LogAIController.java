@@ -14,8 +14,8 @@ public class LogAIController {
 
     private final AIService aiService;
 
-    @PostMapping("/summarise/{sessionId}")
+    @GetMapping("/summarise/{sessionId}")
     public ResponseEntity<SummaryResponse> summarizeLogs(@PathVariable String sessionId, @RequestBody LlmRequest request) {
-        return ResponseEntity.ok(aiService.summarizeLogs(sessionId, request.getUserPrompt()));
+        return ResponseEntity.ok(aiService.summarizeLogs(sessionId, request));
     }
 }

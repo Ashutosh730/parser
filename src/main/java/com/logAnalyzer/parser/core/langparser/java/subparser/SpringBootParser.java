@@ -8,6 +8,7 @@ import com.logAnalyzer.parser.util.LogSubParserUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 
@@ -36,7 +37,7 @@ public class SpringBootParser implements JavaSubParser {
         var matcher = pattern.matcher(headerLine);
         if (matcher.find()) {
             String timestamp = matcher.group("timestamp");
-            LocalDateTime formattedTimeStamp = LocalDateTime.parse(timestamp, java.time.format.DateTimeFormatter.ISO_DATE_TIME);
+            Long timeMillis = Instant.parse(timestamp).toEpochMilli();
             String level = matcher.group("level");
             String thread = matcher.group("thread").trim();
             String className = matcher.group("className");
@@ -46,7 +47,7 @@ public class SpringBootParser implements JavaSubParser {
                 message = message + "\n" + continuationLines;
             }
             return ParsedLog.builder()
-                    .timestamp(formattedTimeStamp)
+                    .timestamp(timeMillis)
                     .level(LogLevel.valueOf(level))
                     .thread(thread)
                     .className(className)

@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Document(indexName = "log_entries")
@@ -21,29 +20,22 @@ public class LogEntryDocument {
 
     @Id
     private String id;
-
     private String sessionId;
-    private LocalDateTime logTimestamp;
-
+    private Long logTimestamp;
     private LogLevel level;
-
     private String thread;
     private String className;
-
     private String message;
-
     private String pid;
-
     private String rawLog;
-
-    private LocalDateTime createdAt;
+    private Long createdAt;
 
     public void initialize() {
         if (id == null) {
             id = UUID.randomUUID().toString();
         }
         if (createdAt == null) {
-            createdAt = LocalDateTime.now();
+            createdAt = System.currentTimeMillis();
         }
     }
 }

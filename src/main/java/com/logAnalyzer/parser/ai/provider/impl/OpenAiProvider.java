@@ -1,5 +1,6 @@
 package com.logAnalyzer.parser.ai.provider.impl;
 
+import com.logAnalyzer.parser.ai.enums.LlmProviderEnum;
 import com.logAnalyzer.parser.ai.model.LlmRequest;
 import com.logAnalyzer.parser.ai.provider.LLMProvider;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +20,7 @@ public class OpenAiProvider implements LLMProvider {
     }
 
     @Override
-    public String getProviderName() {
-        return "OpenAI";
+    public LlmProviderEnum getProviderName() {
+        return LlmProviderEnum.OPENAI;
     }
 }

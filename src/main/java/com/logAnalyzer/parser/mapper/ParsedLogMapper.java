@@ -9,7 +9,7 @@ public final class ParsedLogMapper {
 
     public static LogEntryDocument toEntity(ParsedLog dto, String sessionId) {
         if (dto == null) return null;
-        return LogEntryDocument.builder()
+        LogEntryDocument logEntryDocument = LogEntryDocument.builder()
                 .id(null)
                 .sessionId(sessionId)
                 .logTimestamp(dto.getTimestamp())
@@ -20,6 +20,8 @@ public final class ParsedLogMapper {
                 .pid(dto.getPid())
                 .rawLog(dto.getRawLog())
                 .build();
+        logEntryDocument.initialize();
+        return logEntryDocument;
     }
 }
 

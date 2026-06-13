@@ -6,7 +6,9 @@ import lombok.Data;
 @Data
 @Builder
 public class SummaryResponse{
+    String sessionId;
     String summary;
     boolean cached;
     String provider;
+    String model;
 }

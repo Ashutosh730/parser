@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Builder
 public class ParsedLog {
 
-    private LocalDateTime timestamp;
+    private Long timestamp;
     private LogLevel level;
     private String thread;
     private String className;

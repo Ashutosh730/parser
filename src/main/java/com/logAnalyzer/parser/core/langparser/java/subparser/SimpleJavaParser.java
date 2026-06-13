@@ -6,6 +6,7 @@ import com.logAnalyzer.parser.model.ParsedLog;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 
@@ -27,13 +28,14 @@ public class SimpleJavaParser implements JavaSubParser {
         var matcher = pattern.matcher(logLine);
         if(matcher.matches()) {
             String timestamp = matcher.group("timestamp");
+            Long timeMillis = Instant.parse(timestamp).toEpochMilli();
             String level = matcher.group("level");
             String thread = matcher.group("thread").trim();
             String className = matcher.group("className");
             String pid = matcher.group("pid");
             String message = matcher.group("message");
             return ParsedLog.builder()
-                    .timestamp(LocalDateTime.parse(timestamp))
+                    .timestamp(timeMillis)
                     .level(LogLevel.valueOf(level))
                     .thread(thread)
                     .className(className)
