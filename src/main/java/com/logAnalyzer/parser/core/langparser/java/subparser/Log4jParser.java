@@ -9,9 +9,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.regex.Pattern;
+
+import static com.logAnalyzer.parser.util.LogSubParserUtil.parseTimestamp;
 
 @Component
 public class Log4jParser implements JavaSubParser {
@@ -38,7 +38,9 @@ public class Log4jParser implements JavaSubParser {
         var matcher = pattern.matcher(headerLine);
         if (matcher.find()) {
             String timestamp = matcher.group("timestamp");
-            Long timeMillis = Instant.parse(timestamp).toEpochMilli();
+            String dateTimePattern =  timestamp.contains(",") ? "yyyy-MM-dd HH:mm:ss,SSS" : "yyyy-MM-dd HH:mm:ss.SSS";
+            Instant formattedTimeStamp = parseTimestamp(timestamp,dateTimePattern);
+
             String level = matcher.group("level");
             String thread = matcher.group("thread").trim();
             String className = matcher.group("className");
@@ -47,7 +49,7 @@ public class Log4jParser implements JavaSubParser {
                 message = message + "\n" + continuationLines;
             }
             return ParsedLog.builder()
-                    .timestamp(timeMillis)
+                    .timestamp(formattedTimeStamp)
                     .level(LogLevel.valueOf(level))
                     .thread(thread)
                     .className(className)

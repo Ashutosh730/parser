@@ -10,5 +10,5 @@ import lombok.NoArgsConstructor;
 public class SessionResponse {
     private String message;
     private String fileName;
-    private String uploadSessionId;
+    private String sessionId;
 }

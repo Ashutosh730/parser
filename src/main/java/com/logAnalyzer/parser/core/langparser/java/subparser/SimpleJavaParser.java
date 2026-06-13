@@ -10,6 +10,8 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 
+import static com.logAnalyzer.parser.util.LogSubParserUtil.parseTimestamp;
+
 @Component
 public class SimpleJavaParser implements JavaSubParser {
 
@@ -27,15 +29,14 @@ public class SimpleJavaParser implements JavaSubParser {
         Pattern pattern = Pattern.compile(logFormat);
         var matcher = pattern.matcher(logLine);
         if(matcher.matches()) {
-            String timestamp = matcher.group("timestamp");
-            Long timeMillis = Instant.parse(timestamp).toEpochMilli();
+            Instant formattedTimeStamp = parseTimestamp(matcher.group("timestamp"),"");
             String level = matcher.group("level");
             String thread = matcher.group("thread").trim();
             String className = matcher.group("className");
             String pid = matcher.group("pid");
             String message = matcher.group("message");
             return ParsedLog.builder()
-                    .timestamp(timeMillis)
+                    .timestamp(formattedTimeStamp)
                     .level(LogLevel.valueOf(level))
                     .thread(thread)
                     .className(className)

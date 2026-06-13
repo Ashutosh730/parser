@@ -116,6 +116,8 @@ public class LogPipelineService {
                     .collect(Collectors.toList());
             
             // Batch save to Elasticsearch
+            log.info("logTimestamp={}", logEntries.getFirst().getLogTimestamp());
+            log.info("createdAt={}", logEntries.getFirst().getCreatedAt());
             logEntryEsRepository.saveAll(logEntries);
             log.info("Successfully persisted {} parsed logs to Elasticsearch for sessionId = {}", logEntries.size(), sessionId);
 

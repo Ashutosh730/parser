@@ -37,7 +37,9 @@ public class AIServiceImpl implements AIService {
 
         List<LogEntryDocument> errors = logEntryEsRepository
                 .findBySessionIdAndLevel(sessionId, LogLevel.ERROR);
+
         if (errors.isEmpty()) {
+            cacheAiSummary(sessionId, request, "No errors found in this log file.");
             return SummaryResponse.builder()
                     .sessionId(sessionId)
                     .summary("No errors found in this log file.")

@@ -5,13 +5,13 @@ import com.logAnalyzer.parser.enums.LogLevel;
 import lombok.Builder;
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Builder
 public class ParsedLog {
 
-    private Long timestamp;
+    private Instant timestamp;
     private LogLevel level;
     private String thread;
     private String className;
