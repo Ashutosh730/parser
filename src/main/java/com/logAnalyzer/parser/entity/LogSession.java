@@ -53,6 +53,6 @@ public class LogSession {
     @Column(name = "detected_framework", length = 50)
     private DetectedFramework detectedFramework;
 
-    @Column(name = "failure_reason", length = 500)
+    @Column(name = "failure_reason", length = 1500)
     private String failureReason;
 }
