@@ -10,7 +10,5 @@ import java.util.List;
 
 @Repository
 public interface LogEntryEsRepository extends ElasticsearchRepository<LogEntryDocument, String> {
-    List<LogEntryDocument> findBySessionId(String sessionId);
-    List<LogEntryDocument> findBySessionIdAndLevel(String sessionId, LogLevel level, PageRequest pageRequest);
     List<LogEntryDocument> findBySessionIdAndLevelIn(String sessionId, List<LogLevel> levels, PageRequest pageRequest);
 }

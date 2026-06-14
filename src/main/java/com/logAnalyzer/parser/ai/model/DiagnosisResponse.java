@@ -7,13 +7,15 @@ import java.util.List;
 
 @Data
 @Builder
-public class RootCauseResponse {
+public class DiagnosisResponse {
+    private String sessionId;
     private List<RootCause> rootCauses;
     private String timeline;
     private String impactSummary;
     private String provider;
     private String model;
     private boolean cached;
+    private List<String> preventiveActions;
 
     @Data
     @Builder
@@ -23,5 +25,14 @@ public class RootCauseResponse {
         private List<String> affectedComponents;
         private String firstOccurrence;
         private int frequency;
+        private List<Fix> fixes;
+    }
+
+    @Data
+    @Builder
+    public static class Fix {
+        private String suggestion;
+        private String category;
+        private String priority;
     }
 }

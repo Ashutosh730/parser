@@ -1,7 +1,7 @@
 package com.logAnalyzer.parser.controller;
 
 import com.logAnalyzer.parser.ai.model.LlmRequest;
-import com.logAnalyzer.parser.ai.model.RootCauseResponse;
+import com.logAnalyzer.parser.ai.model.DiagnosisResponse;
 import com.logAnalyzer.parser.ai.model.SummaryResponse;
 import com.logAnalyzer.parser.ai.service.AIService;
 import com.logAnalyzer.parser.exception.AiResponseParseException;
@@ -21,8 +21,8 @@ public class LogAIController {
         return ResponseEntity.ok(aiService.summarizeLogs(sessionId, request));
     }
 
-    @PostMapping("/root-cause/{sessionId}")
-    public ResponseEntity<RootCauseResponse> rootCause(@PathVariable String sessionId, @RequestBody LlmRequest request) throws AiResponseParseException {
+    @PostMapping("/diagnose/{sessionId}")
+    public ResponseEntity<DiagnosisResponse> rootCause(@PathVariable String sessionId, @RequestBody LlmRequest request) throws AiResponseParseException {
         return ResponseEntity.ok(aiService.analyse(sessionId, request));
     }
 }
