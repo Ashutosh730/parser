@@ -4,8 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.logAnalyzer.parser.ai.entity.AiResult;
 import com.logAnalyzer.parser.ai.enums.AiFeatureEnum;
+import com.logAnalyzer.parser.ai.enums.LlmProviderEnum;
 import com.logAnalyzer.parser.ai.model.LlmRequest;
 import com.logAnalyzer.parser.ai.model.DiagnosisResponse;
+import com.logAnalyzer.parser.ai.model.InterpretedFilter;
+import com.logAnalyzer.parser.ai.model.NlQueryResponse;
 import com.logAnalyzer.parser.ai.model.SummaryResponse;
 import com.logAnalyzer.parser.ai.provider.LLMProvider;
 import com.logAnalyzer.parser.ai.provider.LlmFactory;
@@ -18,10 +21,18 @@ import com.logAnalyzer.parser.repository.LogEntryEsRepository;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.query.Criteria;
+import org.springframework.data.elasticsearch.core.query.CriteriaQuery;
+import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +42,7 @@ public class AIServiceImpl implements AIService {
     private final AiResultRepository aiResultRepository;
     private final LogEntryEsRepository logEntryEsRepository;
     private final ObjectMapper objectMapper;
+    private final ElasticsearchOperations elasticsearchOperations;
 
     private static final String SUMMARY_PROMPT = """
              You are an expert log analyst.\s
@@ -71,6 +83,32 @@ public class AIServiceImpl implements AIService {
             - Each root cause has 1-2 specific fixes directly addressing it
             - Be specific — "Increase HikariCP maximum-pool-size to 20" not "increase pool size"
             - Maximum 3 prevention tips
+            """;
+
+    private static final String NLQ_SYSTEM_PROMPT = """
+            You are a query translator for a log search system.
+            Convert the user's natural language query into structured filters.
+        
+            Current timestamp: %s
+        
+            Respond ONLY in this JSON format, no extra text:
+            {
+                "keywords": ["specific", "search", "terms"],
+                "level": ["ERROR" , "WARN" , "INFO" , "DEBUG" , null],
+                "timeFrom": "ISO-8601 timestamp or null",
+                "timeTo": "ISO-8601 timestamp or null",
+                "className": "specific class/service name or null",
+                "explanation": "one sentence describing your interpretation"
+            }
+        
+            Rules:
+            - "last night" = yesterday 18:00 to today 06:00
+            - "today" = today 00:00 to current time
+            - "yesterday" = yesterday 00:00 to yesterday 23:59
+            - keywords = specific technical terms only (e.g. "database", "timeout", "NullPointerException")
+              do NOT include common words like "show", "find", "errors", "logs"
+            - level = null if user didn't specify a severity
+            - className = null unless user mentions a specific class or service name
             """;
 
     @Override
@@ -122,7 +160,8 @@ public class AIServiceImpl implements AIService {
     public DiagnosisResponse analyse(String sessionId, LlmRequest request) throws AiResponseParseException {
         AiResult cache = getCached(sessionId, request, AiFeatureEnum.DIAGNOSIS);
         if (cache != null) {
-            DiagnosisResponse response = deserialize(cache.getResult());
+            DiagnosisResponse response = deserialize(cache.getResult(), DiagnosisResponse.class);
+            response.setSessionId(sessionId);
             response.setModel(request.getModel());
             response.setProvider(request.getProvider().name());
             response.setCached(true);
@@ -143,14 +182,14 @@ public class AIServiceImpl implements AIService {
                     .build();
         }
 
-        request.setSystemPrompt(DIAGNOSIS_SYSTEM_PROMPT );
+        request.setSystemPrompt(DIAGNOSIS_SYSTEM_PROMPT);
         request.setUserPrompt(buildUserPrompt(errors));
         request.setMaxTokens(500);      // more than summary — structured JSON needs space
         request.setTemperature(0.1f);   // very low — factual, deterministic output
 
         LLMProvider provider = llmFactory.getProvider(request.getProvider());
         String rawJson = provider.complete(request);
-        DiagnosisResponse response = deserialize(rawJson);
+        DiagnosisResponse response = deserialize(rawJson, DiagnosisResponse.class);
 
         response.setSessionId(sessionId);
         response.setModel(request.getModel());
@@ -161,15 +200,85 @@ public class AIServiceImpl implements AIService {
         return response;
     }
 
-    private DiagnosisResponse deserialize(String json) throws AiResponseParseException {
+    @Override
+    public NlQueryResponse search(String sessionId, LlmRequest request) throws AiResponseParseException{
+        String systemPrompt = NLQ_SYSTEM_PROMPT.formatted(LocalDateTime.now());
+        request.setSystemPrompt(systemPrompt);
+        request.setMaxTokens(300);
+        request.setTemperature(0.0f);   // fully deterministic — same query = same filter
+
+        LLMProvider provider = llmFactory.getProvider(request.getProvider());
+        String rawJson = provider.complete(request);
+        InterpretedFilter filter = deserialize(rawJson, InterpretedFilter.class);
+
+        Query esQuery = buildElasticsearchQuery(sessionId, filter);
+
+        SearchHits<LogEntryDocument> hits = elasticsearchOperations.search(esQuery, LogEntryDocument.class);
+
+        return NlQueryResponse.builder()
+                .sessionId(sessionId)
+                .originalQuery(request.getUserPrompt())
+                .interpretedFilter(filter)
+                .results(hits.stream().map(SearchHit::getContent).toList())
+                .totalHits(hits.getTotalHits())
+                .provider(request.getProvider().name())
+                .model(request.getModel())
+                .build();
+    }
+
+    private Query buildElasticsearchQuery(String sessionId, InterpretedFilter filter) {
+
+        Criteria criteria = Criteria.where("sessionId").is(sessionId);
+
+        // Level filter — validate against enum first, ignore if invalid
+        if (filter.getLevel() != null) {
+            for(String level : filter.getLevel()) {
+                if(isValidLevel(level))
+                criteria = criteria.and("level").is(level);
+            }
+        }
+
+        // Keyword search — OR across message field
+        if (filter.getKeywords() != null && !filter.getKeywords().isEmpty()) {
+            Criteria keywordCriteria = null;
+            for (String keyword : filter.getKeywords()) {
+                Criteria c = Criteria.where("message").matches(keyword);
+                keywordCriteria = (keywordCriteria == null) ? c : keywordCriteria.or(c);
+            }
+            criteria = criteria.and(keywordCriteria);
+        }
+
+        // Time range
+        if (filter.getTimeFrom() != null && filter.getTimeTo() != null) {
+            criteria = criteria.and("logTimestamp")
+                    .greaterThanEqual(filter.getTimeFrom())
+                    .lessThanEqual(filter.getTimeTo());
+        }
+
+        // Class/service name
+        if (filter.getClassName() != null) {
+            criteria = criteria.and("className").matches(filter.getClassName());
+        }
+
+        return new CriteriaQuery(criteria).setPageable(PageRequest.of(0, 100));
+    }
+
+    private boolean isValidLevel(String level) {
+        return Set.of("ERROR", "WARN", "INFO", "DEBUG").contains(level.toUpperCase());
+    }
+
+    private <T> T deserialize(String json, Class<T> targetClass) throws AiResponseParseException {
         try {
             // Strip markdown code blocks if LLM wraps response in ```json
             String clean = json.replaceAll("```json|```", "").trim();
-            return objectMapper.readValue(clean, DiagnosisResponse.class);
+
+            // This returns an instance of T, matching the new method return type
+            return objectMapper.readValue(clean, targetClass);
         } catch (JsonProcessingException e) {
             throw new AiResponseParseException("Failed to parse root cause response", e);
         }
     }
+
 
     private void cacheAiResponse(String sessionId, LlmRequest request, String summary, AiFeatureEnum feature) {
         AiResult result = AiResult.builder()

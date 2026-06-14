@@ -9,12 +9,12 @@ import java.util.List;
 @Builder
 public class DiagnosisResponse {
     private String sessionId;
-    private List<RootCause> rootCauses;
     private String timeline;
-    private String impactSummary;
     private String provider;
     private String model;
     private boolean cached;
+    private String impactSummary;
+    private List<RootCause> rootCauses;
     private List<String> preventiveActions;
 
     @Data

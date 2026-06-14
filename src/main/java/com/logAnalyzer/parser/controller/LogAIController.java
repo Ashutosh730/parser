@@ -1,8 +1,6 @@
 package com.logAnalyzer.parser.controller;
 
-import com.logAnalyzer.parser.ai.model.LlmRequest;
-import com.logAnalyzer.parser.ai.model.DiagnosisResponse;
-import com.logAnalyzer.parser.ai.model.SummaryResponse;
+import com.logAnalyzer.parser.ai.model.*;
 import com.logAnalyzer.parser.ai.service.AIService;
 import com.logAnalyzer.parser.exception.AiResponseParseException;
 import lombok.RequiredArgsConstructor;
@@ -24,5 +22,10 @@ public class LogAIController {
     @PostMapping("/diagnose/{sessionId}")
     public ResponseEntity<DiagnosisResponse> rootCause(@PathVariable String sessionId, @RequestBody LlmRequest request) throws AiResponseParseException {
         return ResponseEntity.ok(aiService.analyse(sessionId, request));
+    }
+
+    @PostMapping("/query/{sessionId}")
+    public ResponseEntity<NlQueryResponse> search(@PathVariable String sessionId, @RequestBody LlmRequest request) throws AiResponseParseException {
+        return ResponseEntity.ok(aiService.search(sessionId, request));
     }
 }
