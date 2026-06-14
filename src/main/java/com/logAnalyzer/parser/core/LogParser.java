@@ -1,8 +1,11 @@
 package com.logAnalyzer.parser.core;
 
-import com.logAnalyzer.parser.model.parsed.ParsedLog;
+import com.logAnalyzer.parser.model.ParsedLog;
+
+import java.util.List;
 
 public interface LogParser {
-    boolean canParse(String logEntry);
+    boolean isParsable(List<String> logLines);
     ParsedLog parse(String logEntry);
+    boolean isPrimaryLine(String line);
 }
