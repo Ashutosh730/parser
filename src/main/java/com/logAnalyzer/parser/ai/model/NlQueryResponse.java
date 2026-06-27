@@ -11,9 +11,11 @@ import java.util.List;
 public class NlQueryResponse {
     private String sessionId;
     private String originalQuery;
+    private String intent;                  // "SEARCH" or "AGGREGATION"
     private long totalHits;
     private String provider;
     private String model;
+    private Object aggregationResult;        // populated for AGGREGATION
     private InterpretedFilter interpretedFilter;
     private List<LogEntryDocument> results;
 }

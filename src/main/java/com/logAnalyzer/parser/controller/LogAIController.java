@@ -26,6 +26,6 @@ public class LogAIController {
 
     @PostMapping("/query/{sessionId}")
     public ResponseEntity<NlQueryResponse> search(@PathVariable String sessionId, @RequestBody LlmRequest request) throws AiResponseParseException {
-        return ResponseEntity.ok(aiService.search(sessionId, request));
+        return ResponseEntity.ok(aiService.queryProcessor(sessionId, request));
     }
 }

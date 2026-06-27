@@ -23,12 +23,15 @@ public class LogEntryDocument {
 
     @Id
     private String id;
+    @Field(type = FieldType.Keyword)
     private String sessionId;
     @Field(type = FieldType.Date)
     private Instant logTimestamp;
+    @Field(type = FieldType.Keyword)
     private LogLevel level;
     private String thread;
     private String className;
+    @Field(type = FieldType.Keyword)
     private String message;
     private String pid;
     private String rawLog;
