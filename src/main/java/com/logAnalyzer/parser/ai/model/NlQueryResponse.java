@@ -15,6 +15,7 @@ public class NlQueryResponse {
     private long totalHits;
     private String provider;
     private String model;
+    private String factAnswer;               // FACT_EXTRACTION
     private Object aggregationResult;        // populated for AGGREGATION
     private InterpretedFilter interpretedFilter;
     private List<LogEntryDocument> results;
