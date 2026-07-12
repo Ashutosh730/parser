@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 
 import static com.logAnalyzer.parser.util.LogSubParserUtil.parseTimestamp;

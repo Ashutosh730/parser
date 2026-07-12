@@ -9,9 +9,11 @@ import java.util.List;
 @Builder
 public class InterpretedFilter {
     private List<String> keywords;
-    private List<String> level;
+    private String intent;
+    private List<String> levels;
     private String timeFrom;
     private String timeTo;
     private String className;
+    private String aggregationType;
     private String explanation;
 }

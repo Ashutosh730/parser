@@ -7,9 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import org.springframework.data.annotation.Id;
-import org.springframework.data.elasticsearch.annotations.Document;
-import org.springframework.data.elasticsearch.annotations.Field;
-import org.springframework.data.elasticsearch.annotations.FieldType;
+import org.springframework.data.elasticsearch.annotations.*;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -23,12 +21,23 @@ public class LogEntryDocument {
 
     @Id
     private String id;
+    @Field(type = FieldType.Keyword)
     private String sessionId;
     @Field(type = FieldType.Date)
     private Instant logTimestamp;
+    @Field(type = FieldType.Keyword)
     private LogLevel level;
     private String thread;
     private String className;
+    @MultiField(
+            mainField = @Field(type = FieldType.Text),
+            otherFields = {
+                    @InnerField(
+                            suffix = "keyword",
+                            type = FieldType.Keyword
+                    )
+            }
+    )
     private String message;
     private String pid;
     private String rawLog;

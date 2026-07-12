@@ -20,6 +20,9 @@ public class LogSession {
     @Column(name = "id", length = 36, nullable = false)
     private String id;
 
+    @Column(nullable = false)
+    private String userId;
+
     @Column(name = "file_name")
     private String fileName;
 

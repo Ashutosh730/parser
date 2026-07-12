@@ -17,9 +17,10 @@ public class LogSessionServiceImpl implements SessionService {
 
     private final LogSessionRepository logSessionRepository;
 
-    public String create(String originalFilename, String storagePath) {
+    public String create(String originalFilename, String storagePath, String userId) {
         LogSession session = LogSession.builder()
                 .id(java.util.UUID.randomUUID().toString())
+                .userId(userId)
                 .fileName(originalFilename)
                 .storagePath(storagePath)
                 .status(LogSessionStatus.PENDING)
@@ -43,16 +44,17 @@ public class LogSessionServiceImpl implements SessionService {
                     session.setWarnCount(logSession.getWarnCount());
                     session.setDetectedFramework(logSession.getDetectedFramework());
                     session.setDetectedLanguage(logSession.getDetectedLanguage());
+                    session.setCompletedAt(LocalDateTime.now());
                     log.info("Session {} is now COMPLETED with totalLines={}, errorCount={}, warnCount={}, detectedFramework={}, detectedLanguage={}",
                             session.getId(), session.getTotalLines(), session.getErrorCount(), session.getWarnCount(), session.getDetectedFramework(), session.getDetectedLanguage());
                 }
                 case FAILED -> {
                     session.setStatus(LogSessionStatus.FAILED);
                     session.setFailureReason(logSession.getFailureReason());
+                    session.setCompletedAt(LocalDateTime.now());
                     log.info("Session {} FAILED with reason: {}", session.getId(), logSession.getFailureReason());
                 }
             }
-            session.setCompletedAt(LocalDateTime.now());
             logSessionRepository.save(session);
         });
     }
