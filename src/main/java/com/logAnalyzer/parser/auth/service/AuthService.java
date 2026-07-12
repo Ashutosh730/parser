@@ -9,7 +9,9 @@ import com.logAnalyzer.parser.auth.repository.UserRepository;
 import com.logAnalyzer.parser.exception.EmailAlreadyExistsException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -56,12 +58,13 @@ public class AuthService {
 
         // Spring Security validates email + password
         // Throws BadCredentialsException if wrong
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
-                )
-        );
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            );
+        } catch (AuthenticationException e) {
+            throw new BadCredentialsException("Invalid email or password");
+        }
 
         // If we reach here — credentials are valid
         User user = userRepository.findByEmail(request.getEmail())

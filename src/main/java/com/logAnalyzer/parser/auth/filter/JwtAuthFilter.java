@@ -41,7 +41,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String token = authHeader.substring(7);  // remove "Bearer "
         String email = null;
         try {
-            jwtService.extractEmail(token);
+            email = jwtService.extractEmail(token);
         } catch (JwtException e) {
             throw new JwtException("Invalid JWT token: " + e.getMessage());
         }

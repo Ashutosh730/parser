@@ -2,9 +2,9 @@ spring:
   application:
     name: parser
   datasource:
-    url: jdbc:postgresql://localhost:5432/logdb
-    username: admin
-    password: admin
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/log_analyzer}
+    username: ${SPRING_DATASOURCE_USERNAME:admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:admin}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -13,7 +13,7 @@ spring:
     properties:
       hibernate.jdbc.time_zone: UTC
   elasticsearch:
-    uris: http://localhost:9200
+    uris: ${SPRING_ELASTICSEARCH_URIS:http://localhost:9200}
   jackson:
     time-zone: UTC
   config:
@@ -48,4 +48,12 @@ logging:
     org.springframework.data.elasticsearch.client: TRACE
 
 jwt:
-  expiration: 86400000  # 24 hours in ms
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+
+openai:
+  api-key: ${OPENAI_API_KEY}
+
+claude:
+  api-key: ${CLAUDE_API_KEY}

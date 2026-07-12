@@ -433,6 +433,6 @@ public class AIServiceImpl implements AIService {
     private void validateSessionOwnership(String sessionId, String userId) {
         LogSession session = sessionRepository.findByIdAndUserId(sessionId, userId)
                 .orElseThrow(() -> new SessionNotFoundException(
-                        "Session not found or access denied: " + sessionId));
+                        "Session not found: " + sessionId));
     }
 }
