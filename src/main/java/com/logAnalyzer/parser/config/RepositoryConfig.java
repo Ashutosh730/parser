@@ -8,7 +8,7 @@ import org.springframework.context.annotation.FilterType;
 
 @Configuration
 @EnableJpaRepositories(
-    basePackages = {"com.logAnalyzer.parser.repository", "com.logAnalyzer.parser.ai.repository"},
+    basePackages = {"com.logAnalyzer.parser.repository", "com.logAnalyzer.parser.ai.repository", "com.logAnalyzer.parser.auth.repository"},
     excludeFilters = {
         @ComponentScan.Filter(
             type = FilterType.REGEX,

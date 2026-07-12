@@ -46,3 +46,6 @@ logging:
   level:
     tracer: TRACE
     org.springframework.data.elasticsearch.client: TRACE
+
+jwt:
+  expiration: 86400000  # 24 hours in ms

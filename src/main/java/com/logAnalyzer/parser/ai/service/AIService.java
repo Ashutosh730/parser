@@ -7,7 +7,7 @@ import com.logAnalyzer.parser.ai.model.SummaryResponse;
 import com.logAnalyzer.parser.exception.AiResponseParseException;
 
 public interface AIService {
-    SummaryResponse summarizeLogs(String sessionId, LlmRequest request);
-    DiagnosisResponse analyse(String sessionId, LlmRequest request) throws AiResponseParseException;
-    NlQueryResponse queryProcessor(String sessionId, LlmRequest request) throws AiResponseParseException;
-    }
+    SummaryResponse summarizeLogs(String sessionId, String userId, LlmRequest request);
+    DiagnosisResponse analyse(String sessionId, String userId, LlmRequest request) throws AiResponseParseException;
+    NlQueryResponse queryProcessor(String sessionId, String userId, LlmRequest request) throws AiResponseParseException;
+}

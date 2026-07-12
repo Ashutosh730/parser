@@ -15,10 +15,13 @@ import com.logAnalyzer.parser.ai.provider.LlmFactory;
 import com.logAnalyzer.parser.ai.repository.AiResultRepository;
 import com.logAnalyzer.parser.ai.service.AIService;
 import com.logAnalyzer.parser.entity.LogEntryDocument;
+import com.logAnalyzer.parser.entity.LogSession;
 import com.logAnalyzer.parser.enums.LogLevel;
 import com.logAnalyzer.parser.exception.AiResponseParseException;
+import com.logAnalyzer.parser.exception.SessionNotFoundException;
 import com.logAnalyzer.parser.repository.LogEntryCustomEsRepository;
 import com.logAnalyzer.parser.repository.LogEntryEsRepository;
+import com.logAnalyzer.parser.repository.LogSessionRepository;
 import lombok.RequiredArgsConstructor;
 
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +42,7 @@ public class AIServiceImpl implements AIService {
 
     private final LlmFactory llmFactory;
     private final AiResultRepository aiResultRepository;
+    private final LogSessionRepository sessionRepository;
     private final LogEntryEsRepository logEntryEsRepository;
     private final ObjectMapper objectMapper;
     private final LogEntryCustomEsRepository logEntryCustomEsRepository;
@@ -166,7 +170,8 @@ public class AIServiceImpl implements AIService {
             """;
 
     @Override
-    public SummaryResponse summarizeLogs(String sessionId, LlmRequest request) {
+    public SummaryResponse summarizeLogs(String sessionId, String userId, LlmRequest request) {
+        validateSessionOwnership(sessionId, userId);
 
         AiResult cache = getCached(sessionId, request, AiFeatureEnum.SUMMARY);
         if (cache != null) {
@@ -211,7 +216,9 @@ public class AIServiceImpl implements AIService {
     }
 
     @Override
-    public DiagnosisResponse analyse(String sessionId, LlmRequest request) throws AiResponseParseException {
+    public DiagnosisResponse analyse(String sessionId, String userId, LlmRequest request) throws AiResponseParseException {
+        validateSessionOwnership(sessionId, userId);
+
         AiResult cache = getCached(sessionId, request, AiFeatureEnum.DIAGNOSIS);
         if (cache != null) {
             DiagnosisResponse response = deserialize(cache.getResult(), DiagnosisResponse.class);
@@ -255,7 +262,9 @@ public class AIServiceImpl implements AIService {
     }
 
     @Override
-    public NlQueryResponse queryProcessor(String sessionId, LlmRequest request) throws AiResponseParseException {
+    public NlQueryResponse queryProcessor(String sessionId, String userId, LlmRequest request) throws AiResponseParseException {
+        validateSessionOwnership(sessionId, userId);
+
         String systemPrompt = NLQ_SYSTEM_PROMPT.formatted(LocalDateTime.now());
         request.setSystemPrompt(systemPrompt);
         request.setMaxTokens(300);
@@ -419,5 +428,11 @@ public class AIServiceImpl implements AIService {
         });
 
         return sb.toString();
+    }
+
+    private void validateSessionOwnership(String sessionId, String userId) {
+        LogSession session = sessionRepository.findByIdAndUserId(sessionId, userId)
+                .orElseThrow(() -> new SessionNotFoundException(
+                        "Session not found or access denied: " + sessionId));
     }
 }
