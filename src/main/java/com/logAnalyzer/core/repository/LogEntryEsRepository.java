@@ -1,0 +1,15 @@
+package com.logAnalyzer.core.repository;
+
+import com.logAnalyzer.core.entity.LogEntryDocument;
+import com.logAnalyzer.core.enums.LogLevel;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface LogEntryEsRepository extends ElasticsearchRepository<LogEntryDocument, String> {
+    List<LogEntryDocument> findBySessionIdAndLevelIn(String sessionId, List<LogLevel> levels, PageRequest pageRequest);
+    List<LogEntryDocument> findBySessionIdOrderByLogTimestampAsc(String sessionId, PageRequest pageRequest);
+}
