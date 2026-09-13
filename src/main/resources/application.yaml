@@ -1,6 +1,13 @@
 spring:
   application:
     name: parser
+  ai:
+    openai:
+      base-url: ${SPRING_AI_OPENAI_BASE_URL:${OPENAI_BASE_URL:https://integrate.api.nvidia.com}}
+      api-key: ${SPRING_AI_OPENAI_API_KEY:${OPENAI_API_KEY:}}
+      chat:
+        options:
+          model: ${OPENAI_MODEL:nvidia/nemotron-3-super-120b-a12b}
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/log_analyzer}
     username: ${SPRING_DATASOURCE_USERNAME:admin}
@@ -18,7 +25,7 @@ spring:
   jackson:
     time-zone: UTC
   config:
-    import: optional:file:./secret.yaml
+    import: optional:file:./secret.yaml, optional:dotenv:.
 #  kafka:
 #    bootstrap-servers: localhost:9092
 #    consumer:
@@ -47,11 +54,11 @@ logging:
   level:
     tracer: TRACE
     org.springframework.data.elasticsearch.client: TRACE
+    org.springframework.web.client.RestClient: DEBUG
 
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000}
-
 
 openai:
   api-key: ${OPENAI_API_KEY}
