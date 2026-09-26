@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.logAnalyzer.ai.entity.AiResult;
 import com.logAnalyzer.ai.enums.AiFeatureEnum;
+import com.logAnalyzer.ai.enums.LlmProviderEnum;
 import com.logAnalyzer.ai.enums.QueryIntent;
 import com.logAnalyzer.ai.model.LlmRequest;
 import com.logAnalyzer.ai.model.DiagnosisResponse;
@@ -12,6 +13,7 @@ import com.logAnalyzer.ai.model.NlQueryResponse;
 import com.logAnalyzer.ai.model.SummaryResponse;
 import com.logAnalyzer.ai.provider.LLMProvider;
 import com.logAnalyzer.ai.provider.LlmFactory;
+import com.logAnalyzer.ai.provider.UniversalLLMProvider;
 import com.logAnalyzer.ai.repository.AiResultRepository;
 import com.logAnalyzer.ai.service.AIService;
 import com.logAnalyzer.core.entity.LogEntryDocument;
@@ -46,6 +48,7 @@ public class AIServiceImpl implements AIService {
     private final LogEntryEsRepository logEntryEsRepository;
     private final ObjectMapper objectMapper;
     private final LogEntryCustomEsRepository logEntryCustomEsRepository;
+    private final UniversalLLMProvider universalLLMProvider;
 
     private static final String SUMMARY_PROMPT = """
              You are an expert log analyst.\s
@@ -172,6 +175,7 @@ public class AIServiceImpl implements AIService {
     @Override
     public SummaryResponse summarizeLogs(String sessionId, String userId, LlmRequest request) {
         validateSessionOwnership(sessionId, userId);
+        request = validateLlmRequest(request);
 
         AiResult cache = getCached(sessionId, request, AiFeatureEnum.SUMMARY);
         if (cache != null) {
@@ -202,8 +206,7 @@ public class AIServiceImpl implements AIService {
         request.setMaxTokens(300);
         request.setTemperature(0.3f);
 
-        LLMProvider provider = llmFactory.getProvider(request.getProvider());
-        String summary = provider.complete(request);
+        String summary = universalLLMProvider.complete(request);
 
         cacheAiResponse(sessionId, request, summary, AiFeatureEnum.SUMMARY);
         return SummaryResponse.builder()
@@ -218,6 +221,7 @@ public class AIServiceImpl implements AIService {
     @Override
     public DiagnosisResponse analyse(String sessionId, String userId, LlmRequest request) throws AiResponseParseException {
         validateSessionOwnership(sessionId, userId);
+        request = validateLlmRequest(request);
 
         AiResult cache = getCached(sessionId, request, AiFeatureEnum.DIAGNOSIS);
         if (cache != null) {
@@ -248,8 +252,7 @@ public class AIServiceImpl implements AIService {
         request.setMaxTokens(500);      // more than summary — structured JSON needs space
         request.setTemperature(0.1f);   // very low — factual, deterministic output
 
-        LLMProvider provider = llmFactory.getProvider(request.getProvider());
-        String rawJson = provider.complete(request);
+        String rawJson = universalLLMProvider.complete(request);
         DiagnosisResponse response = deserialize(rawJson, DiagnosisResponse.class);
 
         response.setSessionId(sessionId);
@@ -264,14 +267,14 @@ public class AIServiceImpl implements AIService {
     @Override
     public NlQueryResponse queryProcessor(String sessionId, String userId, LlmRequest request) throws AiResponseParseException {
         validateSessionOwnership(sessionId, userId);
+        request = validateLlmRequest(request);
 
         String systemPrompt = NLQ_SYSTEM_PROMPT.formatted(LocalDateTime.now());
         request.setSystemPrompt(systemPrompt);
         request.setMaxTokens(300);
-        request.setTemperature(0.0f);   // fully deterministic — same query = same filter
+        request.setTemperature(0.2f);   // fully deterministic — same query = same filter
 
-        LLMProvider provider = llmFactory.getProvider(request.getProvider());
-        String rawJson = provider.complete(request);
+        String rawJson = universalLLMProvider.complete(request);
         InterpretedFilter filter = deserialize(rawJson, InterpretedFilter.class);
 
         return switch (filter.getIntent()) {
@@ -434,5 +437,15 @@ public class AIServiceImpl implements AIService {
         LogSession session = sessionRepository.findByIdAndUserId(sessionId, userId)
                 .orElseThrow(() -> new SessionNotFoundException(
                         "Session not found: " + sessionId));
+    }
+
+    private LlmRequest validateLlmRequest(LlmRequest request) {
+        if(request != null)
+            return request;
+        return LlmRequest.builder()
+                .provider(LlmProviderEnum.NVIDIA)
+                .model("nvidia/nemotron-3-super-120b-a12b")
+                .build();
+
     }
 }

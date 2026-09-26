@@ -23,19 +23,19 @@ public class LogAIController {
     private final UserRepository userRepository;
 
     @PostMapping("/summarise/{sessionId}")
-    public ResponseEntity<SummaryResponse> summarizeLogs(@PathVariable String sessionId, @RequestBody LlmRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<SummaryResponse> summarizeLogs(@PathVariable String sessionId, @RequestBody(required = false) LlmRequest request, @AuthenticationPrincipal UserDetails userDetails) {
         String userId = getUserId(userDetails);
         return ResponseEntity.ok(aiService.summarizeLogs(sessionId, userId, request));
     }
 
     @PostMapping("/diagnose/{sessionId}")
-    public ResponseEntity<DiagnosisResponse> rootCause(@PathVariable String sessionId, @RequestBody LlmRequest request, @AuthenticationPrincipal UserDetails userDetails) throws AiResponseParseException {
+    public ResponseEntity<DiagnosisResponse> rootCause(@PathVariable String sessionId, @RequestBody(required = false) LlmRequest request, @AuthenticationPrincipal UserDetails userDetails) throws AiResponseParseException {
         String userId = getUserId(userDetails);
         return ResponseEntity.ok(aiService.analyse(sessionId, userId, request));
     }
 
     @PostMapping("/query/{sessionId}")
-    public ResponseEntity<NlQueryResponse> search(@PathVariable String sessionId, @RequestBody LlmRequest request, @AuthenticationPrincipal UserDetails userDetails) throws AiResponseParseException {
+    public ResponseEntity<NlQueryResponse> search(@PathVariable String sessionId, @RequestBody(required = false) LlmRequest request, @AuthenticationPrincipal UserDetails userDetails) throws AiResponseParseException {
         String userId = getUserId(userDetails);
         return ResponseEntity.ok(aiService.queryProcessor(sessionId, userId, request));
     }
