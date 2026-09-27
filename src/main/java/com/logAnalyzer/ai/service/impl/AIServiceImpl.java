@@ -33,6 +33,7 @@ import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -225,6 +226,18 @@ public class AIServiceImpl implements AIService {
 
         AiResult cache = getCached(sessionId, request, AiFeatureEnum.DIAGNOSIS);
         if (cache != null) {
+            if(!doesHaveDiagnosisResult(cache.getResult())) {
+                return DiagnosisResponse.builder()
+                        .sessionId(sessionId)
+                        .impactSummary(cache.getResult())
+                        .rootCauses(new ArrayList<>())
+                        .preventiveActions(new ArrayList<>())
+                        .cached(true)
+                        .provider(cache.getProvider().name())
+                        .model(cache.getModel())
+                        .build();
+            }
+
             DiagnosisResponse response = deserialize(cache.getResult(), DiagnosisResponse.class);
             response.setSessionId(sessionId);
             response.setModel(request.getModel());
@@ -447,5 +460,9 @@ public class AIServiceImpl implements AIService {
                 .model("nvidia/nemotron-3-super-120b-a12b")
                 .build();
 
+    }
+
+    private boolean doesHaveDiagnosisResult(String cacheResult){
+        return cacheResult.contains("rootCauses") && cacheResult.contains("preventiveActions");
     }
 }

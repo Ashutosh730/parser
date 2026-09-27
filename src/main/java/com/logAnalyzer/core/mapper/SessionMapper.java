@@ -9,6 +9,14 @@ public class SessionMapper {
         return SessionResponse.builder()
                 .sessionId(session.getId())
                 .fileName(session.getFileName())
+                .uploadedAt(session.getUploadedAt())
+                .status(session.getStatus())
+                .completedAt(session.getCompletedAt())
+                .totalLines(session.getTotalLines())
+                .errorCount(session.getErrorCount())
+                .warnCount(session.getWarnCount())
+                .detectedLanguage(session.getDetectedLanguage())
+                .detectedFramework(session.getDetectedFramework())
                 .build();
     }
 }

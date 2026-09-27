@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/logs")
@@ -38,7 +39,10 @@ public class LogUploadController {
         String result = LogFileUtil.validateFile(file);
         if (result != null) {
             return ResponseEntity.badRequest()
-                    .body(new SessionResponse(result, file.getOriginalFilename(),null));
+                    .body(SessionResponse.builder()
+                            .message(result)
+                            .fileName(file.getOriginalFilename())
+                            .build());
         }
 
         String userId = getUserId(userDetails);
@@ -47,7 +51,11 @@ public class LogUploadController {
 
         pipelineService.processFile(sessionId, logFilePath);
         return ResponseEntity.accepted()
-                .body(new SessionResponse("File uploaded successfully", file.getOriginalFilename(), sessionId));
+                .body(SessionResponse.builder()
+                        .message("File uploaded successfully")
+                        .fileName(file.getOriginalFilename())
+                        .sessionId(sessionId)
+                        .build());
     }
 
     @GetMapping("/sessions")
@@ -58,6 +66,17 @@ public class LogUploadController {
         return ResponseEntity.ok(sessions.stream()
                 .map(SessionMapper::toResponse)
                 .toList());
+    }
+
+    @GetMapping("/session/{sessionId}")
+    public ResponseEntity<SessionResponse> getSessionById(@PathVariable String sessionId, @AuthenticationPrincipal UserDetails userDetails) {
+        String userId = getUserId(userDetails);
+
+        if(userId == null || userId.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        Optional<LogSession> session = sessionRepository.findByIdAndUserId(sessionId, userId);
+        return ResponseEntity.ok(SessionMapper.toResponse(session.orElseThrow(() -> new RuntimeException("Session not found"))));
     }
 
     private String getUserId(UserDetails userDetails) {
