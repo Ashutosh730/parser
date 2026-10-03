@@ -68,7 +68,7 @@ public class LogUploadController {
                 .toList());
     }
 
-    @GetMapping("/session/{sessionId}")
+    @GetMapping("/sessions/{sessionId}")
     public ResponseEntity<SessionResponse> getSessionById(@PathVariable String sessionId, @AuthenticationPrincipal UserDetails userDetails) {
         String userId = getUserId(userDetails);
 
