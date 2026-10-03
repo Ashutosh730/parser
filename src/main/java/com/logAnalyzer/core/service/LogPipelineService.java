@@ -33,12 +33,11 @@ public class LogPipelineService {
 
     private final LogParserFactory logParserFactory;
     private final LogSessionServiceImpl logSessionService;
-    private final List<ParsedLog> parsedLogs = new ArrayList<>();
     private final LogEntryEsRepository logEntryEsRepository;
 
     public void processFile(String sessionId, Path logFilePath) {
         log.debug("Processing file for sessionId = {}, path = {}", sessionId, logFilePath);
-        parsedLogs.clear();
+        List<ParsedLog> parsedLogs = new ArrayList<>();
 
         LogParser parser = null;
         try (BufferedReader reader = Files.newBufferedReader(logFilePath)) {
@@ -60,14 +59,14 @@ public class LogPipelineService {
                             return;
                         }
                         for (String sampledLine : sampleLines) {
-                            handleSampleLine(parser, prevPrimaryLine, sampledLine);
+                            handleSampleLine(parser, prevPrimaryLine, sampledLine, parsedLogs);
                         }
                     }
                     continue;
                 }
             
                 if (parser != null) {
-                    handleSampleLine(parser, prevPrimaryLine, line);
+                    handleSampleLine(parser, prevPrimaryLine, line, parsedLogs);
                 }
             }
 
@@ -80,7 +79,7 @@ public class LogPipelineService {
                     return;
                 }
                 for (String sampledLine : sampleLines) {
-                    handleSampleLine(parser, prevPrimaryLine, sampledLine);
+                    handleSampleLine(parser, prevPrimaryLine, sampledLine, parsedLogs);
                 }
             }
             
@@ -101,7 +100,7 @@ public class LogPipelineService {
                     .findFirst()
                     .orElse(DetectedFramework.UNKNOWN);
 
-            processParsedLog(sessionId, framework, language);
+            processParsedLog(sessionId, framework, language, parsedLogs);
             log.info("Finished processing file for sessionId = {}, \n total parsed logs = {}", sessionId, parsedLogs.size());
         } catch (IOException e) {
             log.error("Error processing log file: {}", e.getMessage());
@@ -109,7 +108,7 @@ public class LogPipelineService {
     }
 
     @Transactional
-    private void processParsedLog(String sessionId, DetectedFramework framework, DetectedLanguage language) {
+    private void processParsedLog(String sessionId, DetectedFramework framework, DetectedLanguage language, List<ParsedLog> parsedLogs) {
         try {
             if (parsedLogs.isEmpty()) {
                 log.warn("No parsed logs found for sessionId = {}", sessionId);
@@ -152,7 +151,7 @@ public class LogPipelineService {
         }
     }
 
-    private void handleSampleLine(LogParser parser, StringBuilder prevPrimaryLine, String sampledLine) {
+    private void handleSampleLine(LogParser parser, StringBuilder prevPrimaryLine, String sampledLine, List<ParsedLog> parsedLogs) {
         if (parser.isPrimaryLine(sampledLine)) {
             if (!prevPrimaryLine.isEmpty()) {
                 ParsedLog parsedLog = parser.parse(prevPrimaryLine.toString());
