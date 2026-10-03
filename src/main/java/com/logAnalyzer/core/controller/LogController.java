@@ -25,7 +25,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/logs")
 @RequiredArgsConstructor
-public class LogUploadController {
+public class LogController {
 
     private final LocalStorageServiceImpl storageService;
     private final LogPipelineService pipelineService;

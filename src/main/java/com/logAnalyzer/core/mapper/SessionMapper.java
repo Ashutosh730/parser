@@ -17,6 +17,7 @@ public class SessionMapper {
                 .warnCount(session.getWarnCount())
                 .detectedLanguage(session.getDetectedLanguage())
                 .detectedFramework(session.getDetectedFramework())
+                .failureReason(session.getFailureReason())
                 .build();
     }
 }

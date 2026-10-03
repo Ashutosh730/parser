@@ -49,11 +49,11 @@ class LogUploadControllerTest {
     @Mock private User user;
     @Mock private LogSession session;
 
-    private LogUploadController controller;
+    private LogController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new LogUploadController(
+        controller = new LogController(
                 storageService, pipelineService, sessionService,
                 sessionRepository, userRepository);
     }

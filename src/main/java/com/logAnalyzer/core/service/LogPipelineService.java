@@ -54,6 +54,11 @@ public class LogPipelineService {
                     // Once we have enough — detect language and get detector
                     if (sampleLines.size() == 20) {
                         parser = logParserFactory.getParser(sampleLines);
+                        if(parser == null){
+                            log.error("No suitable parser found for the provided log entries: {}", sampleLines);
+                            handleProcessingError(sessionId,"No suitable parser found for the provided log file");
+                            return;
+                        }
                         for (String sampledLine : sampleLines) {
                             handleSampleLine(parser, prevPrimaryLine, sampledLine);
                         }
@@ -69,6 +74,11 @@ public class LogPipelineService {
             // Handle files with < 20 lines: get parser from available lines and flush final block
             if (parser == null && !sampleLines.isEmpty()) {
                 parser = logParserFactory.getParser(sampleLines);
+                if(parser == null){
+                    log.error("No suitable parser found for the provided log entries: {}", sampleLines);
+                    handleProcessingError(sessionId,"No suitable parser found for the provided log file");
+                    return;
+                }
                 for (String sampledLine : sampleLines) {
                     handleSampleLine(parser, prevPrimaryLine, sampledLine);
                 }
@@ -159,5 +169,14 @@ public class LogPipelineService {
             prevPrimaryLine.append('\n');
             prevPrimaryLine.append(sampledLine);
         }
+    }
+
+    private void handleProcessingError(String sessionId, String msg) {
+        LogSession logSession = LogSession.builder()
+                .id(sessionId)
+                .failureReason(msg)
+                .status(LogSessionStatus.FAILED)
+                .build();
+        logSessionService.updateStatus(logSession);
     }
 }
