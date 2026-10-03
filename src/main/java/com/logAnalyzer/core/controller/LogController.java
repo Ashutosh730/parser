@@ -6,8 +6,8 @@ import com.logAnalyzer.core.mapper.SessionMapper;
 import com.logAnalyzer.core.model.SessionResponse;
 import com.logAnalyzer.core.repository.LogSessionRepository;
 import com.logAnalyzer.core.service.LogPipelineService;
-import com.logAnalyzer.core.service.impl.LocalStorageServiceImpl;
-import com.logAnalyzer.core.service.impl.LogSessionServiceImpl;
+import com.logAnalyzer.core.service.SessionService;
+import com.logAnalyzer.core.service.StorageService;
 import com.logAnalyzer.core.util.LogFileUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -27,9 +27,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class LogController {
 
-    private final LocalStorageServiceImpl storageService;
+    private final StorageService storageService;
     private final LogPipelineService pipelineService;
-    private final LogSessionServiceImpl sessionService;
+    private final SessionService sessionService;
     private final LogSessionRepository sessionRepository;
     private final UserRepository userRepository;
 

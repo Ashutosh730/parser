@@ -4,6 +4,7 @@ import co.elastic.clients.elasticsearch._types.FieldValue;
 import com.logAnalyzer.ai.model.InterpretedFilter;
 import com.logAnalyzer.core.entity.LogEntryDocument;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchAggregations;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -81,6 +82,25 @@ class LogEntryCustomEsRepositoryTest {
     }
 
     @Test
+    void getErrorTimeline_shouldUseMappedFieldsInGeneratedQuery() {
+        ElasticsearchAggregations aggregations = mock(ElasticsearchAggregations.class, RETURNS_DEEP_STUBS);
+        doReturn(aggregations).when(searchHits).getAggregations();
+        when(aggregations.get("error_timeline").aggregation().getAggregate()
+                .dateHistogram().buckets().array()).thenReturn(List.of());
+        when(operations.search(any(Query.class), eq(LogEntryDocument.class)))
+                .thenReturn(searchHits);
+
+        repository.getErrorTimeline("session-1");
+
+        ArgumentCaptor<NativeQuery> query = ArgumentCaptor.forClass(NativeQuery.class);
+        verify(operations).search(query.capture(), eq(LogEntryDocument.class));
+        assertEquals("sessionId", query.getValue().getQuery().bool().must().get(0).term().field());
+        assertEquals("level", query.getValue().getQuery().bool().must().get(1).term().field());
+        assertEquals("logTimestamp", query.getValue().getAggregations()
+                .get("error_timeline").dateHistogram().field());
+    }
+
+    @Test
     void getLevelDistribution_shouldMapAggregationBucketsToCounts() {
         ElasticsearchAggregations aggregations =
                 mock(ElasticsearchAggregations.class, RETURNS_DEEP_STUBS);
@@ -104,7 +124,12 @@ class LogEntryCustomEsRepositoryTest {
                 "session-1", List.of("ERROR", "WARN"));
 
         assertEquals(java.util.Map.of("ERROR", 7L, "WARN", 3L), result);
-        verify(operations).search(any(Query.class), eq(LogEntryDocument.class));
+        ArgumentCaptor<NativeQuery> query = ArgumentCaptor.forClass(NativeQuery.class);
+        verify(operations).search(query.capture(), eq(LogEntryDocument.class));
+        assertEquals("sessionId", query.getValue().getQuery().bool().must().get(0).term().field());
+        assertEquals("level", query.getValue().getQuery().bool().must().get(1).terms().field());
+        assertEquals("level", query.getValue().getAggregations()
+                .get("level_distribution").terms().field());
     }
 
     @Test
@@ -120,7 +145,9 @@ class LogEntryCustomEsRepositoryTest {
                 "session-1", List.of("timeout", "failure"), PageRequest.of(1, 10));
 
         assertEquals(List.of(first, second), result);
-        verify(operations).search(any(Query.class), eq(LogEntryDocument.class));
+        ArgumentCaptor<NativeQuery> query = ArgumentCaptor.forClass(NativeQuery.class);
+        verify(operations).search(query.capture(), eq(LogEntryDocument.class));
+        assertEquals("sessionId", query.getValue().getQuery().bool().must().get(0).term().field());
     }
 
     @Test
