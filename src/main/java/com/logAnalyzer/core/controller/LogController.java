@@ -76,7 +76,7 @@ public class LogController {
             return ResponseEntity.notFound().build();
         }
         Optional<LogSession> session = sessionRepository.findByIdAndUserId(sessionId, userId);
-        return ResponseEntity.ok(SessionMapper.toResponse(session.orElseThrow(() -> new RuntimeException("Session not found"))));
+        return session.map(logSession -> ResponseEntity.ok(SessionMapper.toResponse(logSession))).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/sessions/{sessionId}")

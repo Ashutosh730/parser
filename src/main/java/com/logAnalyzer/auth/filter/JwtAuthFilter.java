@@ -43,24 +43,25 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             email = jwtService.extractEmail(token);
         } catch (JwtException e) {
-            throw new JwtException("Invalid JWT token: " + e.getMessage());
+            filterChain.doFilter(request, response);
+            return;
         }
 
         // Validate and set authentication
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (email != null
+            && SecurityContextHolder.getContext().getAuthentication() == null
+            && jwtService.isTokenValid(token, email)) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-            if (jwtService.isTokenValid(token, email)) {
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
-                        );
-                authToken.setDetails(new WebAuthenticationDetailsSource()
-                        .buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
+            UsernamePasswordAuthenticationToken authToken =
+                new UsernamePasswordAuthenticationToken(
+                    userDetails,
+                    null,
+                    userDetails.getAuthorities()
+                );
+            authToken.setDetails(new WebAuthenticationDetailsSource()
+                .buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 
         filterChain.doFilter(request, response);

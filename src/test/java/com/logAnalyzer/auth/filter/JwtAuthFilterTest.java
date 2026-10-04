@@ -11,7 +11,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockFilterChain;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,7 +22,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -93,27 +91,27 @@ class JwtAuthFilterTest {
     @Test
     void doFilter_shouldContinueWithoutAuthenticationForInvalidToken() throws Exception {
         request.addHeader("Authorization", "Bearer token");
-        UserDetails details = User.withUsername("user@example.com").password("password").roles("USER").build();
         when(jwtService.extractEmail("token")).thenReturn("user@example.com");
-        when(userDetailsService.loadUserByUsername("user@example.com")).thenReturn(details);
         when(jwtService.isTokenValid("token", "user@example.com")).thenReturn(false);
 
         filter.run(request, response, filterChain);
 
         assertEquals(null, SecurityContextHolder.getContext().getAuthentication());
+        verify(userDetailsService, never()).loadUserByUsername("user@example.com");
         verify(filterChain).doFilter(request, response);
     }
 
     @Test
-    void doFilter_shouldWrapJwtParsingFailure() {
+    void doFilter_shouldContinueWithoutAuthenticationForMalformedToken() throws Exception {
         request.addHeader("Authorization", "Bearer token");
         when(jwtService.extractEmail("token"))
                 .thenThrow(new JwtException("expired"));
 
-        JwtException exception = assertThrows(JwtException.class,
-                () -> filter.run(request, response, filterChain));
+        filter.run(request, response, filterChain);
 
-        assertEquals("Invalid JWT token: expired", exception.getMessage());
+        assertEquals(null, SecurityContextHolder.getContext().getAuthentication());
+        verify(userDetailsService, never()).loadUserByUsername("user@example.com");
+        verify(filterChain).doFilter(request, response);
     }
 
     @Test
