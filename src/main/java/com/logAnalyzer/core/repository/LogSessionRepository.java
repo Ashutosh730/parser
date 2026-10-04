@@ -3,6 +3,7 @@ package com.logAnalyzer.core.repository;
 import com.logAnalyzer.core.entity.LogSession;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -11,4 +12,6 @@ import java.util.Optional;
 public interface LogSessionRepository extends JpaRepository<LogSession, String> {
     List<LogSession> findByUserId(String userId);
     Optional<LogSession> findByIdAndUserId(String id, String userId);
+    @Transactional
+    void deleteByIdAndUserId(String id, String userId);
 }

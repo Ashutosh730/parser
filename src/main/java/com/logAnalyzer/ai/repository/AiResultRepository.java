@@ -10,4 +10,5 @@ import java.util.List;
 @Repository
 public interface AiResultRepository extends JpaRepository<AiResult, String> {
     List<AiResult> findBySessionIdAndFeature(String id, AiFeatureEnum feature);
+    void deleteBySessionId(String sessionId);
 }

@@ -1,12 +1,16 @@
 package com.logAnalyzer.core.service.impl;
 
+import com.logAnalyzer.ai.repository.AiResultRepository;
 import com.logAnalyzer.core.enums.LogSessionStatus;
 import com.logAnalyzer.core.entity.LogSession;
+import com.logAnalyzer.core.repository.LogEntryCustomEsRepository;
 import com.logAnalyzer.core.repository.LogSessionRepository;
 import com.logAnalyzer.core.service.SessionService;
+import com.logAnalyzer.core.service.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -16,6 +20,9 @@ import java.time.LocalDateTime;
 public class LogSessionServiceImpl implements SessionService {
 
     private final LogSessionRepository logSessionRepository;
+    private final AiResultRepository aiResultRepository;
+    private final LogEntryCustomEsRepository logEntryCustomEsRepository;
+    private final StorageService storageService;
 
     public String create(String originalFilename, String storagePath, String userId) {
         LogSession session = LogSession.builder()
@@ -57,5 +64,13 @@ public class LogSessionServiceImpl implements SessionService {
             }
             logSessionRepository.save(session);
         });
+    }
+
+    @Transactional
+    public void delete(String sessionId, String userId) {
+        storageService.delete(sessionId, userId);
+        aiResultRepository.deleteBySessionId(sessionId);
+        logEntryCustomEsRepository.deleteBySessionId(sessionId);
+        logSessionRepository.deleteByIdAndUserId(sessionId, userId);
     }
 }

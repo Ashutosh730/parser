@@ -17,6 +17,7 @@ import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.query.Criteria;
 import org.springframework.data.elasticsearch.core.query.CriteriaQuery;
+import org.springframework.data.elasticsearch.core.query.DeleteQuery;
 import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.stereotype.Repository;
 
@@ -301,5 +302,12 @@ public class LogEntryCustomEsRepository {
                 .stream()
                 .map(SearchHit::getContent)
                 .toList();
+    }
+
+    public void deleteBySessionId(String sessionId) {
+        Query query = new CriteriaQuery(
+                Criteria.where("sessionId").is(sessionId)
+        );
+        elasticsearchOperations.delete(DeleteQuery.builder(query).build(), LogEntryDocument.class);
     }
 }

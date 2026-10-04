@@ -102,6 +102,9 @@ public class LogPipelineService {
 
             processParsedLog(sessionId, framework, language, parsedLogs);
             log.info("Finished processing file for sessionId = {}, \n total parsed logs = {}", sessionId, parsedLogs.size());
+        } catch (IllegalArgumentException e) {
+            log.error("No suitable parser found for log file: {}", e.getMessage());
+            handleProcessingError(sessionId, e.getMessage());
         } catch (IOException e) {
             log.error("Error processing log file: {}", e.getMessage());
         }

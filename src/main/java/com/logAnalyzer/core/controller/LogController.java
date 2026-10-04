@@ -79,6 +79,13 @@ public class LogController {
         return ResponseEntity.ok(SessionMapper.toResponse(session.orElseThrow(() -> new RuntimeException("Session not found"))));
     }
 
+    @DeleteMapping("/sessions/{sessionId}")
+    public ResponseEntity<Void> deleteSession(@PathVariable String sessionId, @AuthenticationPrincipal UserDetails userDetails) {
+        String userId = getUserId(userDetails);
+        sessionService.delete(sessionId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
     private String getUserId(UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"))

@@ -6,4 +6,5 @@ import java.nio.file.Path;
 
 public interface StorageService {
     Path upload(MultipartFile file);
+    void delete(String sessionId, String userId);
 }
