@@ -49,7 +49,7 @@ public class LogController {
         Path logFilePath = storageService.upload(file);
         String sessionId = sessionService.create(file.getOriginalFilename(), logFilePath.getFileName().toString(), userId);
 
-        pipelineService.processFile(sessionId, logFilePath);
+        pipelineService.enqueueFile(sessionId, logFilePath);
         return ResponseEntity.accepted()
                 .body(SessionResponse.builder()
                         .message("File uploaded successfully")

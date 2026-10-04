@@ -14,9 +14,10 @@ import com.logAnalyzer.core.repository.LogEntryEsRepository;
 import com.logAnalyzer.core.service.impl.LogSessionServiceImpl;
 import com.logAnalyzer.core.util.ParserUtil;
 import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,20 +25,38 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.concurrent.RejectedExecutionException;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class LogPipelineService {
 
-    private final LogParserFactory logParserFactory;
-    private final LogSessionServiceImpl logSessionService;
-    private final LogEntryEsRepository logEntryEsRepository;
+    private static final int BATCH_SIZE = 500;
+
+    @Autowired
+    private LogParserFactory logParserFactory;
+    @Autowired
+    private LogSessionServiceImpl logSessionService;
+    @Autowired
+    private LogEntryEsRepository logEntryEsRepository;
+    @Autowired
+    @Qualifier("logProcessingExecutor")
+    private TaskExecutor logProcessingExecutor;
+
+    public void enqueueFile(String sessionId, Path logFilePath) {
+        try {
+            logProcessingExecutor.execute(() -> processFile(sessionId, logFilePath));
+        } catch (RejectedExecutionException e) {
+            log.error("Log processing queue is full for sessionId = {}", sessionId, e);
+            handleProcessingError(sessionId, "Log processing queue is full");
+        }
+    }
 
     public void processFile(String sessionId, Path logFilePath) {
         log.debug("Processing file for sessionId = {}, path = {}", sessionId, logFilePath);
-        List<ParsedLog> parsedLogs = new ArrayList<>();
+        List<LogEntryDocument> batch = new ArrayList<>(BATCH_SIZE);
+        ProcessingStats stats = new ProcessingStats();
 
         LogParser parser = null;
         try (BufferedReader reader = Files.newBufferedReader(logFilePath)) {
@@ -59,14 +78,14 @@ public class LogPipelineService {
                             return;
                         }
                         for (String sampledLine : sampleLines) {
-                            handleSampleLine(parser, prevPrimaryLine, sampledLine, parsedLogs);
+                            handleSampleLine(parser, prevPrimaryLine, sampledLine, sessionId, batch, stats);
                         }
                     }
                     continue;
                 }
             
                 if (parser != null) {
-                    handleSampleLine(parser, prevPrimaryLine, line, parsedLogs);
+                    handleSampleLine(parser, prevPrimaryLine, line, sessionId, batch, stats);
                 }
             }
 
@@ -79,7 +98,7 @@ public class LogPipelineService {
                     return;
                 }
                 for (String sampledLine : sampleLines) {
-                    handleSampleLine(parser, prevPrimaryLine, sampledLine, parsedLogs);
+                    handleSampleLine(parser, prevPrimaryLine, sampledLine, sessionId, batch, stats);
                 }
             }
             
@@ -87,79 +106,50 @@ public class LogPipelineService {
             if (parser != null && !prevPrimaryLine.isEmpty()) {
                 ParsedLog parsedLog = parser.parse(prevPrimaryLine.toString());
                 if (parsedLog != null) {
-                    parsedLogs.add(parsedLog);
+                        addParsedLog(sessionId, parsedLog, batch, stats);
                     log.info("Final parsed log {}", parsedLog);
                 }
             }
+                    flushBatch(batch, stats);
             DetectedLanguage language = (parser != null) 
                     ? ParserUtil.getDetectedLanguage(parser.getClass().getSimpleName())
                     : DetectedLanguage.UNKNOWN;
-            DetectedFramework framework = parsedLogs.stream()
-                    .map(ParsedLog::getFramework)
-                    .filter(Objects::nonNull)
-                    .findFirst()
-                    .orElse(DetectedFramework.UNKNOWN);
+                    DetectedFramework framework = Objects.requireNonNullElse(stats.framework, DetectedFramework.UNKNOWN);
 
-            processParsedLog(sessionId, framework, language, parsedLogs);
-            log.info("Finished processing file for sessionId = {}, \n total parsed logs = {}", sessionId, parsedLogs.size());
+                    completeSession(sessionId, framework, language, stats);
+                    log.info("Finished processing file for sessionId = {}, total parsed logs = {}", sessionId, stats.totalLines);
         } catch (IllegalArgumentException e) {
             log.error("No suitable parser found for log file: {}", e.getMessage());
             handleProcessingError(sessionId, e.getMessage());
+        } catch (RuntimeException e) {
+            log.error("Error processing file for sessionId = {}", sessionId, e);
+            handlePersistenceError(sessionId, e);
         } catch (IOException e) {
             log.error("Error processing log file: {}", e.getMessage());
+            handleProcessingError(sessionId, e.getMessage());
         }
     }
 
-    @Transactional
-    private void processParsedLog(String sessionId, DetectedFramework framework, DetectedLanguage language, List<ParsedLog> parsedLogs) {
-        try {
-            if (parsedLogs.isEmpty()) {
-                log.warn("No parsed logs found for sessionId = {}", sessionId);
-                LogSession logSession = LogSession.builder()
-                        .id(sessionId)
-                        .status(LogSessionStatus.COMPLETED)
-                        .build();
-                logSessionService.updateStatus(logSession);
-                return;
-            }
-
-            List<LogEntryDocument> logEntries = parsedLogs.stream()
-                    .map(p -> ParsedLogMapper.toEntity(p, sessionId))
-                    .collect(Collectors.toList());
-            
-            // Batch save to Elasticsearch
-            log.info("logTimestamp={}", logEntries.getFirst().getLogTimestamp());
-            log.info("createdAt={}", logEntries.getFirst().getCreatedAt());
-            logEntryEsRepository.saveAll(logEntries);
-            log.info("Successfully persisted {} parsed logs to Elasticsearch for sessionId = {}", logEntries.size(), sessionId);
-
-            LogSession logSession = LogSession.builder()
-                    .id(sessionId)
-                    .totalLines(logEntries.size())
-                    .errorCount((int) logEntries.stream().filter(e -> LogLevel.ERROR.equals(e.getLevel())).count())
-                    .warnCount((int) logEntries.stream().filter(e -> LogLevel.WARN.equals(e.getLevel())).count())
-                    .status(LogSessionStatus.COMPLETED)
-                    .detectedFramework(framework)
-                    .detectedLanguage(language)
-                    .build();
-            logSessionService.updateStatus(logSession);
-        } catch (Exception e) {
-            log.error("Error persisting parsed logs for sessionId = {}: {}", sessionId, e.getMessage(), e);
-            LogSession logSession = LogSession.builder()
-                    .id(sessionId)
-                    .failureReason("Error persisting parsed logs: " + e.getMessage())
-                    .status(LogSessionStatus.FAILED)
-                    .build();
-            logSessionService.updateStatus(logSession);
-        }
+    private void completeSession(String sessionId, DetectedFramework framework, DetectedLanguage language, ProcessingStats stats) {
+        LogSession logSession = LogSession.builder()
+                .id(sessionId)
+                .totalLines(stats.totalLines)
+                .errorCount(stats.errorCount)
+                .warnCount(stats.warnCount)
+                .status(LogSessionStatus.COMPLETED)
+                .detectedFramework(framework)
+                .detectedLanguage(language)
+                .build();
+        logSessionService.updateStatus(logSession);
     }
 
-    private void handleSampleLine(LogParser parser, StringBuilder prevPrimaryLine, String sampledLine, List<ParsedLog> parsedLogs) {
+    private void handleSampleLine(LogParser parser, StringBuilder prevPrimaryLine, String sampledLine,
+                                  String sessionId, List<LogEntryDocument> batch, ProcessingStats stats) {
         if (parser.isPrimaryLine(sampledLine)) {
             if (!prevPrimaryLine.isEmpty()) {
                 ParsedLog parsedLog = parser.parse(prevPrimaryLine.toString());
                 if (parsedLog != null) {
-                    parsedLogs.add(parsedLog);
+                    addParsedLog(sessionId, parsedLog, batch, stats);
                 }
             }
             prevPrimaryLine.setLength(0);
@@ -171,6 +161,45 @@ public class LogPipelineService {
             prevPrimaryLine.append('\n');
             prevPrimaryLine.append(sampledLine);
         }
+    }
+
+    private void addParsedLog(String sessionId, ParsedLog parsedLog, List<LogEntryDocument> batch, ProcessingStats stats) {
+        LogEntryDocument entry = ParsedLogMapper.toEntity(parsedLog, sessionId);
+        batch.add(entry);
+        if (stats.framework == null && parsedLog.getFramework() != null) {
+            stats.framework = parsedLog.getFramework();
+        }
+        if (batch.size() == BATCH_SIZE) {
+            flushBatch(batch, stats);
+        }
+    }
+
+    private void flushBatch(List<LogEntryDocument> batch, ProcessingStats stats) {
+        if (batch.isEmpty()) {
+            return;
+        }
+        logEntryEsRepository.saveAll(batch);
+        stats.totalLines += batch.size();
+        stats.errorCount += (int) batch.stream().filter(e -> LogLevel.ERROR.equals(e.getLevel())).count();
+        stats.warnCount += (int) batch.stream().filter(e -> LogLevel.WARN.equals(e.getLevel())).count();
+        log.info("Persisted batch of {} parsed logs", batch.size());
+        batch.clear();
+    }
+
+    private void handlePersistenceError(String sessionId, RuntimeException exception) {
+        LogSession logSession = LogSession.builder()
+                .id(sessionId)
+                .failureReason("Error persisting parsed logs: " + exception.getMessage())
+                .status(LogSessionStatus.FAILED)
+                .build();
+        logSessionService.updateStatus(logSession);
+    }
+
+    private static class ProcessingStats {
+        private int totalLines;
+        private int errorCount;
+        private int warnCount;
+        private DetectedFramework framework;
     }
 
     private void handleProcessingError(String sessionId, String msg) {
