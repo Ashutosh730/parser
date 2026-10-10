@@ -17,7 +17,6 @@ import com.logAnalyzer.ai.provider.UniversalLLMProvider;
 import com.logAnalyzer.ai.repository.AiResultRepository;
 import com.logAnalyzer.ai.service.AIService;
 import com.logAnalyzer.core.entity.LogEntryDocument;
-import com.logAnalyzer.core.entity.LogSession;
 import com.logAnalyzer.core.enums.LogLevel;
 import com.logAnalyzer.core.exception.AiResponseParseException;
 import com.logAnalyzer.core.exception.SessionNotFoundException;
@@ -205,7 +204,7 @@ public class AIServiceImpl implements AIService {
         request.setSystemPrompt(SUMMARY_PROMPT);
         request.setUserPrompt(buildUserPrompt(errors));
         request.setMaxTokens(300);
-        request.setTemperature(0.3f);
+        request.setTemperature(0.3);
 
         String summary = universalLLMProvider.complete(request);
 
@@ -262,8 +261,8 @@ public class AIServiceImpl implements AIService {
 
         request.setSystemPrompt(DIAGNOSIS_SYSTEM_PROMPT);
         request.setUserPrompt(buildUserPrompt(errors));
-        request.setMaxTokens(500);      // more than summary — structured JSON needs space
-        request.setTemperature(0.1f);   // very low — factual, deterministic output
+        request.setMaxTokens(1500);      // more than summary — structured JSON needs space
+        request.setTemperature(0.5);
 
         String rawJson = universalLLMProvider.complete(request);
         DiagnosisResponse response = deserialize(rawJson, DiagnosisResponse.class);
@@ -285,7 +284,7 @@ public class AIServiceImpl implements AIService {
         String systemPrompt = NLQ_SYSTEM_PROMPT.formatted(LocalDateTime.now());
         request.setSystemPrompt(systemPrompt);
         request.setMaxTokens(300);
-        request.setTemperature(0.2f);   // fully deterministic — same query = same filter
+        request.setTemperature(0.2);   // fully deterministic — same query = same filter
 
         String rawJson = universalLLMProvider.complete(request);
         InterpretedFilter filter = deserialize(rawJson, InterpretedFilter.class);
@@ -369,7 +368,7 @@ public class AIServiceImpl implements AIService {
         String initialUserPrompt = request.getUserPrompt();
         request.setSystemPrompt(NLQ_FACT_EXTRACTION_SYSTEM_PROMPT);
         request.setMaxTokens(150);
-        request.setTemperature(0.0f);
+        request.setTemperature(0.0);
         request.setUserPrompt(request.getUserPrompt() + "\n\nLog Context:\n" + logContext);
         LLMProvider provider = llmFactory.getProvider(request.getProvider());
         String answer = provider.complete(request);
@@ -447,19 +446,19 @@ public class AIServiceImpl implements AIService {
     }
 
     private void validateSessionOwnership(String sessionId, String userId) {
-        LogSession session = sessionRepository.findByIdAndUserId(sessionId, userId)
+        sessionRepository.findByIdAndUserId(sessionId, userId)
                 .orElseThrow(() -> new SessionNotFoundException(
                         "Session not found: " + sessionId));
     }
 
     private LlmRequest validateLlmRequest(LlmRequest request) {
-        if(request != null)
+        if(request != null && request.getProvider() != null && request.getModel() != null) {
             return request;
+        }
         return LlmRequest.builder()
                 .provider(LlmProviderEnum.NVIDIA)
                 .model("nvidia/nemotron-3-super-120b-a12b")
                 .build();
-
     }
 
     private boolean doesHaveDiagnosisResult(String cacheResult){

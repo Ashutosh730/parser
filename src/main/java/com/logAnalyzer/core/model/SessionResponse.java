@@ -28,4 +28,5 @@ public class SessionResponse {
     private Integer warnCount = 0;
     private DetectedLanguage detectedLanguage;
     private DetectedFramework detectedFramework;
+    private String failureReason;
 }

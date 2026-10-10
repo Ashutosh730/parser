@@ -1,5 +1,6 @@
 package com.logAnalyzer.core.controller;
 
+import com.logAnalyzer.core.exception.AiResponseParseException;
 import com.logAnalyzer.core.exception.EmailAlreadyExistsException;
 import com.logAnalyzer.core.exception.SessionNotFoundException;
 import com.logAnalyzer.core.model.ErrorResponse;
@@ -25,14 +26,14 @@ public class GlobalExceptionHandler {
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value() , ex.getMessage()
         );
-        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(SessionNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleBadCredentials(SessionNotFoundException ex) {
+    @ExceptionHandler(AiResponseParseException.class)
+    public ResponseEntity<ErrorResponse> handleBadAiResponse(AiResponseParseException ex) {
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(), ex.getMessage()
         );
-        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+        return new ResponseEntity<>(errorResponse, HttpStatus.NO_CONTENT);
     }
 }

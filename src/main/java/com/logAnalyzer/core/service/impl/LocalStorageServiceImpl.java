@@ -1,9 +1,12 @@
 package com.logAnalyzer.core.service.impl;
 
 import com.logAnalyzer.core.config.FileStorageConfig;
+import com.logAnalyzer.core.entity.LogSession;
+import com.logAnalyzer.core.repository.LogSessionRepository;
 import com.logAnalyzer.core.service.StorageService;
 import com.logAnalyzer.core.util.LogFileUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -14,11 +17,13 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Objects;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LocalStorageServiceImpl implements StorageService {
     
     public final FileStorageConfig fileStorageConfig;
+    public final LogSessionRepository logSessionRepository;
 
     @Override
     public Path upload(MultipartFile file) {
@@ -35,5 +40,19 @@ public class LocalStorageServiceImpl implements StorageService {
         }
 
         return uploadPath;
+    }
+
+    @Override
+    public void delete(String sessionId, String userId) {
+        String filePath = logSessionRepository.findByIdAndUserId(sessionId, userId)
+                .orElse(new LogSession())
+                .getStoragePath();
+        Path uploadDir = Paths.get(System.getProperty("user.dir"), fileStorageConfig.getUploadDir());
+        Path uploadPath = uploadDir.resolve(filePath);
+        try {
+            Files.deleteIfExists(uploadPath);
+        } catch (IOException e) {
+            log.info("Failed to delete file at path: {}", uploadPath, e);
+        }
     }
 }

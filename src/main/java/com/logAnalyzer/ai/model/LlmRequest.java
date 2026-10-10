@@ -10,7 +10,7 @@ public class LlmRequest {
     private String systemPrompt;
     private String userPrompt;
     private int maxTokens;
-    private float temperature;
+    private Double temperature;
     private LlmProviderEnum provider;
     private String model;
 }

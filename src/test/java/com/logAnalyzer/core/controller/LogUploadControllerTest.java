@@ -49,11 +49,11 @@ class LogUploadControllerTest {
     @Mock private User user;
     @Mock private LogSession session;
 
-    private LogUploadController controller;
+    private LogController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new LogUploadController(
+        controller = new LogController(
                 storageService, pipelineService, sessionService,
                 sessionRepository, userRepository);
     }
@@ -102,7 +102,7 @@ class LogUploadControllerTest {
         InOrder order = inOrder(storageService, sessionService, pipelineService);
         order.verify(storageService).upload(file);
         order.verify(sessionService).create("application.log", "application.log", "user-1");
-        order.verify(pipelineService).processFile("session-1", storedFile);
+        order.verify(pipelineService).enqueueFile("session-1", storedFile);
     }
 
     @Test
@@ -131,19 +131,16 @@ class LogUploadControllerTest {
     }
 
     @Test
-    void upload_shouldPropagatePipelineFailure() {
+    void upload_shouldReturnAcceptedWhenProcessingIsEnqueued() {
         Path storedFile = Path.of("application.log");
         givenValidFileAndUser();
         when(storageService.upload(file)).thenReturn(storedFile);
         when(sessionService.create("application.log", "application.log", "user-1"))
                 .thenReturn("session-1");
-        doThrow(new RuntimeException("Pipeline failure"))
-                .when(pipelineService).processFile("session-1", storedFile);
+        ResponseEntity<SessionResponse> response = controller.upload(file, userDetails);
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> controller.upload(file, userDetails));
-
-        assertEquals("Pipeline failure", exception.getMessage());
+        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
+        verify(pipelineService).enqueueFile("session-1", storedFile);
     }
 
     @Test

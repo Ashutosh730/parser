@@ -1,6 +1,7 @@
 package com.logAnalyzer.core.service.impl;
 
 import com.logAnalyzer.core.config.FileStorageConfig;
+import com.logAnalyzer.core.repository.LogSessionRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
@@ -24,7 +25,7 @@ class LocalStorageServiceImplTest {
         byte[] content = "INFO application started".getBytes();
         MockMultipartFile file = new MockMultipartFile("file", "application.log", "text/plain", content);
 
-        Path storedPath = new LocalStorageServiceImpl(config).upload(file);
+        Path storedPath = new LocalStorageServiceImpl(config, mock(LogSessionRepository.class)).upload(file);
 
         assertTrue(Files.exists(storedPath));
         assertTrue(storedPath.getFileName().toString().endsWith(".log"));
@@ -39,6 +40,6 @@ class LocalStorageServiceImplTest {
         when(file.getOriginalFilename()).thenReturn("application.log");
         when(file.getInputStream()).thenThrow(new IOException("read failed"));
 
-        assertThrows(RuntimeException.class, () -> new LocalStorageServiceImpl(config).upload(file));
+        assertThrows(RuntimeException.class, () -> new LocalStorageServiceImpl(config, mock(LogSessionRepository.class)).upload(file));
     }
 }

@@ -1,10 +1,13 @@
 package com.logAnalyzer.core.service.impl;
 
+import com.logAnalyzer.ai.repository.AiResultRepository;
 import com.logAnalyzer.core.entity.LogSession;
 import com.logAnalyzer.core.enums.DetectedFramework;
 import com.logAnalyzer.core.enums.DetectedLanguage;
 import com.logAnalyzer.core.enums.LogSessionStatus;
+import com.logAnalyzer.core.repository.LogEntryCustomEsRepository;
 import com.logAnalyzer.core.repository.LogSessionRepository;
+import com.logAnalyzer.core.service.StorageService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -22,7 +25,8 @@ class LogSessionServiceImplTest {
     @Test
     void create_shouldSavePendingSessionAndReturnGeneratedId() {
         LogSessionRepository repository = mock(LogSessionRepository.class);
-        LogSessionServiceImpl service = new LogSessionServiceImpl(repository);
+        LogSessionServiceImpl service = new LogSessionServiceImpl(repository,
+            mock(AiResultRepository.class), mock(LogEntryCustomEsRepository.class), mock(StorageService.class));
 
         String id = service.create("application.log", "/uploads/application.log", "user-1");
 
@@ -44,7 +48,8 @@ class LogSessionServiceImplTest {
         LogSession stored = LogSession.builder().id("session-1").build();
         when(repository.findById("session-1")).thenReturn(Optional.of(stored));
 
-        new LogSessionServiceImpl(repository).updateStatus(LogSession.builder()
+        new LogSessionServiceImpl(repository,
+            mock(AiResultRepository.class), mock(LogEntryCustomEsRepository.class), mock(StorageService.class)).updateStatus(LogSession.builder()
                 .id("session-1")
                 .status(LogSessionStatus.COMPLETED)
                 .totalLines(12)
@@ -69,7 +74,8 @@ class LogSessionServiceImplTest {
         LogSessionRepository repository = mock(LogSessionRepository.class);
         LogSession stored = LogSession.builder().id("session-1").build();
         when(repository.findById("session-1")).thenReturn(Optional.of(stored));
-        LogSessionServiceImpl service = new LogSessionServiceImpl(repository);
+        LogSessionServiceImpl service = new LogSessionServiceImpl(repository,
+            mock(AiResultRepository.class), mock(LogEntryCustomEsRepository.class), mock(StorageService.class));
 
         service.updateStatus(LogSession.builder().id("session-1").status(LogSessionStatus.IN_PROGRESS).build());
         assertEquals(LogSessionStatus.IN_PROGRESS, stored.getStatus());

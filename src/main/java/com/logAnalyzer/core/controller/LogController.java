@@ -6,8 +6,8 @@ import com.logAnalyzer.core.mapper.SessionMapper;
 import com.logAnalyzer.core.model.SessionResponse;
 import com.logAnalyzer.core.repository.LogSessionRepository;
 import com.logAnalyzer.core.service.LogPipelineService;
-import com.logAnalyzer.core.service.impl.LocalStorageServiceImpl;
-import com.logAnalyzer.core.service.impl.LogSessionServiceImpl;
+import com.logAnalyzer.core.service.SessionService;
+import com.logAnalyzer.core.service.StorageService;
 import com.logAnalyzer.core.util.LogFileUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -25,11 +25,11 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/logs")
 @RequiredArgsConstructor
-public class LogUploadController {
+public class LogController {
 
-    private final LocalStorageServiceImpl storageService;
+    private final StorageService storageService;
     private final LogPipelineService pipelineService;
-    private final LogSessionServiceImpl sessionService;
+    private final SessionService sessionService;
     private final LogSessionRepository sessionRepository;
     private final UserRepository userRepository;
 
@@ -49,7 +49,7 @@ public class LogUploadController {
         Path logFilePath = storageService.upload(file);
         String sessionId = sessionService.create(file.getOriginalFilename(), logFilePath.getFileName().toString(), userId);
 
-        pipelineService.processFile(sessionId, logFilePath);
+        pipelineService.enqueueFile(sessionId, logFilePath);
         return ResponseEntity.accepted()
                 .body(SessionResponse.builder()
                         .message("File uploaded successfully")
@@ -68,7 +68,7 @@ public class LogUploadController {
                 .toList());
     }
 
-    @GetMapping("/session/{sessionId}")
+    @GetMapping("/sessions/{sessionId}")
     public ResponseEntity<SessionResponse> getSessionById(@PathVariable String sessionId, @AuthenticationPrincipal UserDetails userDetails) {
         String userId = getUserId(userDetails);
 
@@ -76,7 +76,14 @@ public class LogUploadController {
             return ResponseEntity.notFound().build();
         }
         Optional<LogSession> session = sessionRepository.findByIdAndUserId(sessionId, userId);
-        return ResponseEntity.ok(SessionMapper.toResponse(session.orElseThrow(() -> new RuntimeException("Session not found"))));
+        return session.map(logSession -> ResponseEntity.ok(SessionMapper.toResponse(logSession))).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    public ResponseEntity<Void> deleteSession(@PathVariable String sessionId, @AuthenticationPrincipal UserDetails userDetails) {
+        String userId = getUserId(userDetails);
+        sessionService.delete(sessionId, userId);
+        return ResponseEntity.noContent().build();
     }
 
     private String getUserId(UserDetails userDetails) {

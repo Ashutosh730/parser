@@ -17,6 +17,7 @@ import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.query.Criteria;
 import org.springframework.data.elasticsearch.core.query.CriteriaQuery;
+import org.springframework.data.elasticsearch.core.query.DeleteQuery;
 import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.stereotype.Repository;
 
@@ -86,7 +87,7 @@ public class LogEntryCustomEsRepository {
                             // always filter by session
                             b.must(m -> m
                                     .term(t -> t
-                                            .field("sessionId.keyword")
+                                            .field("sessionId")
                                             .value(sessionId)
                                     )
                             );
@@ -95,7 +96,7 @@ public class LogEntryCustomEsRepository {
                             if (levels != null && !levels.isEmpty()) {
                                 b.must(m -> m
                                         .terms(t -> t
-                                                .field("level.keyword")
+                                                .field("level")
                                                 .terms(tv -> tv
                                                         .value(levels.stream()
                                                                 .map(FieldValue::of)
@@ -111,7 +112,7 @@ public class LogEntryCustomEsRepository {
                 )
                 .withAggregation("level_distribution",
                         Aggregation.of(a -> a
-                                .terms(t -> t.field("level.keyword").size(10))
+                                .terms(t -> t.field("level").size(10))
                         )
                 )
                 .withMaxResults(0)
@@ -145,13 +146,13 @@ public class LogEntryCustomEsRepository {
 //                .withQuery(q -> q.bool(b -> b
 //                        .filter(f -> f
 //                                .term(t -> t
-//                                        .field("sessionId.keyword")
+//                                        .field("sessionId")
 //                                        .value(sessionId)
 //                                )
 //                        )
 //                        .filter(f -> f
 //                                .term(t -> t
-//                                        .field("level.keyword")
+//                                        .field("level")
 //                                        .value("ERROR")
 //                                )
 //                        )
@@ -217,7 +218,7 @@ public class LogEntryCustomEsRepository {
                                 )
                                 .must(m -> m
                                         .term(t -> t
-                                                .field("level.keyword")
+                                                .field("level")
                                                 .value("ERROR")
                                         )
                                 )
@@ -226,7 +227,7 @@ public class LogEntryCustomEsRepository {
                 .withAggregation("error_timeline",
                         Aggregation.of(a -> a
                                 .dateHistogram(d -> d
-                                        .field("timestamp")
+                                        .field("logTimestamp")
                                         .calendarInterval(CalendarInterval.Hour)  // group by hour
                                         .format("yyyy-MM-dd'T'HH:mm:ss")
                                 )
@@ -267,7 +268,7 @@ public class LogEntryCustomEsRepository {
                             // session filter
                             b.must(m -> m
                                     .term(t -> t
-                                            .field("sessionId.keyword")
+                                            .field("sessionId")
                                             .value(sessionId)
                                     )
                             );
@@ -301,5 +302,12 @@ public class LogEntryCustomEsRepository {
                 .stream()
                 .map(SearchHit::getContent)
                 .toList();
+    }
+
+    public void deleteBySessionId(String sessionId) {
+        Query query = new CriteriaQuery(
+                Criteria.where("sessionId").is(sessionId)
+        );
+        elasticsearchOperations.delete(DeleteQuery.builder(query).build(), LogEntryDocument.class);
     }
 }
