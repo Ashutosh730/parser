@@ -3,6 +3,7 @@ package com.logAnalyzer.core.service.impl;
 import com.logAnalyzer.core.model.StorageProperties;
 import com.logAnalyzer.core.record.StoreRequest;
 import com.logAnalyzer.core.record.StoredObject;
+import com.logAnalyzer.core.util.StorageKeyUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
@@ -32,11 +33,12 @@ class LocalStorageServiceImplTest {
                 file.getInputStream(), file.getSize(), file.getContentType(), "user-1", "session-1", file.getOriginalFilename(), java.util.Map.of()
         ));
 
-        Path storedPath = Path.of(System.getProperty("user.dir"), props.getLocalBaseDir(), "logs", "user-1", "session-1", "application.log").normalize();
+        String expectedKey = StorageKeyUtil.buildKey("logs", "user-1", "session-1", "application.log");
+        Path storedPath = Path.of(System.getProperty("user.dir"), props.getLocalBaseDir(), expectedKey).normalize();
         assertTrue(Files.exists(storedPath));
         assertTrue(storedPath.getFileName().toString().endsWith(".log"));
         assertArrayEquals(content, Files.readAllBytes(storedPath));
-        assertEquals("logs/user-1/session-1/application.log", stored.key());
+        assertEquals(expectedKey, stored.key());
     }
 
     @Test
