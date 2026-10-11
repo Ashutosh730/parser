@@ -14,4 +14,6 @@ public interface LogSessionRepository extends JpaRepository<LogSession, String> 
     Optional<LogSession> findByIdAndUserId(String id, String userId);
     @Transactional
     void deleteByIdAndUserId(String id, String userId);
+    List<LogSession> findByUserIdAndDeletedAtIsNull(String userId);
+    Optional<LogSession> findByIdAndUserIdAndDeletedAtIsNull(String id, String userId);
 }

@@ -5,6 +5,7 @@ import com.logAnalyzer.core.enums.DetectedFramework;
 import com.logAnalyzer.core.enums.LogSessionStatus;
 import com.logAnalyzer.core.model.ParsedLog;
 import com.logAnalyzer.core.repository.LogEntryEsRepository;
+import com.logAnalyzer.core.service.StorageService;
 import com.logAnalyzer.core.strategy.LogParser;
 import com.logAnalyzer.core.strategy.LogParserFactory;
 import com.logAnalyzer.core.service.impl.LogSessionServiceImpl;
@@ -55,7 +56,9 @@ class LogPipelineServiceTest {
         );
         Files.write(logFile, lines);
 
-        createService(factory, sessionService, repository).processFile("session-1", logFile);
+        LogPipelineService service = createService(factory, sessionService, repository);
+        ReflectionTestUtils.setField(service, "storageService", mockStorageService(logFile));
+        service.processFile("session-1", logFile.toString());
 
         ArgumentCaptor<String> parsedChunks = ArgumentCaptor.forClass(String.class);
         verify(parser, org.mockito.Mockito.times(2)).parse(parsedChunks.capture());
@@ -77,7 +80,9 @@ class LogPipelineServiceTest {
         LogEntryEsRepository repository = mock(LogEntryEsRepository.class);
         Path emptyFile = Files.createFile(tempDir.resolve("empty.log"));
 
-        createService(factory, sessionService, repository).processFile("session-2", emptyFile);
+        LogPipelineService service = createService(factory, sessionService, repository);
+        ReflectionTestUtils.setField(service, "storageService", mockStorageService(emptyFile));
+        service.processFile("session-2", emptyFile.toString());
 
         ArgumentCaptor<LogSession> sessionCaptor = ArgumentCaptor.forClass(LogSession.class);
         verify(sessionService).updateStatus(sessionCaptor.capture());
@@ -99,12 +104,16 @@ class LogPipelineServiceTest {
         Path logFile = tempDir.resolve("failed.log");
         Files.writeString(logFile, "2026-09-27 ERROR failed");
 
-        createService(factory, sessionService, repository).processFile("session-3", logFile);
+        LogPipelineService service = createService(factory, sessionService, repository);
+        StorageService storageService = mock(StorageService.class);
+        when(storageService.openStream(logFile.toString())).thenThrow(new RuntimeException("storage unavailable"));
+        ReflectionTestUtils.setField(service, "storageService", storageService);
+        service.processFile("session-3", logFile.toString());
 
         ArgumentCaptor<LogSession> sessionCaptor = ArgumentCaptor.forClass(LogSession.class);
         verify(sessionService).updateStatus(sessionCaptor.capture());
         assertEquals(LogSessionStatus.FAILED, sessionCaptor.getValue().getStatus());
-        assertEquals("Error persisting parsed logs: Elasticsearch unavailable", sessionCaptor.getValue().getFailureReason());
+        assertEquals("Error persisting parsed logs: storage unavailable", sessionCaptor.getValue().getFailureReason());
     }
 
     @Test
@@ -127,10 +136,18 @@ class LogPipelineServiceTest {
                 .mapToObj(index -> "2026-09-27 INFO line-" + index)
                 .toList());
 
-        createService(factory, sessionService, repository).processFile("session-4", logFile);
+        LogPipelineService service = createService(factory, sessionService, repository);
+        ReflectionTestUtils.setField(service, "storageService", mockStorageService(logFile));
+        service.processFile("session-4", logFile.toString());
 
         verify(repository, org.mockito.Mockito.times(3)).saveAll(anyList());
         assertEquals(List.of(500, 500, 1), batchSizes);
+    }
+
+    private StorageService mockStorageService(Path path) throws IOException {
+        StorageService storageService = mock(StorageService.class);
+        when(storageService.openStream(path.toString())).thenReturn(Files.newInputStream(path));
+        return storageService;
     }
 
     private LogPipelineService createService(LogParserFactory factory,

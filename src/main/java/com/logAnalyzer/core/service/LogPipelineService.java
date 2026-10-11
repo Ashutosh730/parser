@@ -13,19 +13,22 @@ import com.logAnalyzer.core.model.ParsedLog;
 import com.logAnalyzer.core.repository.LogEntryEsRepository;
 import com.logAnalyzer.core.service.impl.LogSessionServiceImpl;
 import com.logAnalyzer.core.util.ParserUtil;
-import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.task.TaskExecutor;
+
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.RejectedExecutionException;
+
 import org.springframework.beans.factory.annotation.Autowired;
 
 @Slf4j
@@ -43,8 +46,10 @@ public class LogPipelineService {
     @Autowired
     @Qualifier("logProcessingExecutor")
     private TaskExecutor logProcessingExecutor;
+    @Autowired
+    private StorageService storageService;
 
-    public void enqueueFile(String sessionId, Path logFilePath) {
+    public void enqueueFile(String sessionId, String logFilePath) {
         try {
             logProcessingExecutor.execute(() -> processFile(sessionId, logFilePath));
         } catch (RejectedExecutionException e) {
@@ -53,13 +58,15 @@ public class LogPipelineService {
         }
     }
 
-    public void processFile(String sessionId, Path logFilePath) {
-        log.debug("Processing file for sessionId = {}, path = {}", sessionId, logFilePath);
+    public void processFile(String sessionId, String storageKey) {
+        log.debug("Processing file for sessionId = {}, path = {}", sessionId, storageKey);
         List<LogEntryDocument> batch = new ArrayList<>(BATCH_SIZE);
         ProcessingStats stats = new ProcessingStats();
 
         LogParser parser = null;
-        try (BufferedReader reader = Files.newBufferedReader(logFilePath)) {
+        try (InputStream in = storageService.openStream(storageKey);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+
             String line;
             List<String> sampleLines = new ArrayList<>();
             StringBuilder prevPrimaryLine = new StringBuilder();
@@ -72,9 +79,9 @@ public class LogPipelineService {
                     // Once we have enough — detect language and get detector
                     if (sampleLines.size() == 20) {
                         parser = logParserFactory.getParser(sampleLines);
-                        if(parser == null){
+                        if (parser == null) {
                             log.error("No suitable parser found for the provided log entries: {}", sampleLines);
-                            handleProcessingError(sessionId,"No suitable parser found for the provided log file");
+                            handleProcessingError(sessionId, "No suitable parser found for the provided log file");
                             return;
                         }
                         for (String sampledLine : sampleLines) {
@@ -83,7 +90,7 @@ public class LogPipelineService {
                     }
                     continue;
                 }
-            
+
                 if (parser != null) {
                     handleSampleLine(parser, prevPrimaryLine, line, sessionId, batch, stats);
                 }
@@ -92,32 +99,33 @@ public class LogPipelineService {
             // Handle files with < 20 lines: get parser from available lines and flush final block
             if (parser == null && !sampleLines.isEmpty()) {
                 parser = logParserFactory.getParser(sampleLines);
-                if(parser == null){
+                if (parser == null) {
                     log.error("No suitable parser found for the provided log entries: {}", sampleLines);
-                    handleProcessingError(sessionId,"No suitable parser found for the provided log file");
+                    handleProcessingError(sessionId, "No suitable parser found for the provided log file");
                     return;
                 }
                 for (String sampledLine : sampleLines) {
                     handleSampleLine(parser, prevPrimaryLine, sampledLine, sessionId, batch, stats);
                 }
             }
-            
+
             // Flush the last accumulated primary line block
             if (parser != null && !prevPrimaryLine.isEmpty()) {
                 ParsedLog parsedLog = parser.parse(prevPrimaryLine.toString());
                 if (parsedLog != null) {
-                        addParsedLog(sessionId, parsedLog, batch, stats);
+                    addParsedLog(sessionId, parsedLog, batch, stats);
                     log.info("Final parsed log {}", parsedLog);
                 }
             }
-                    flushBatch(batch, stats);
-            DetectedLanguage language = (parser != null) 
+
+            flushBatch(batch, stats);
+            DetectedLanguage language = (parser != null)
                     ? ParserUtil.getDetectedLanguage(parser.getClass().getSimpleName())
                     : DetectedLanguage.UNKNOWN;
-                    DetectedFramework framework = Objects.requireNonNullElse(stats.framework, DetectedFramework.UNKNOWN);
+            DetectedFramework framework = Objects.requireNonNullElse(stats.framework, DetectedFramework.UNKNOWN);
 
-                    completeSession(sessionId, framework, language, stats);
-                    log.info("Finished processing file for sessionId = {}, total parsed logs = {}", sessionId, stats.totalLines);
+            completeSession(sessionId, framework, language, stats);
+            log.info("Finished processing file for sessionId = {}, total parsed logs = {}", sessionId, stats.totalLines);
         } catch (IllegalArgumentException e) {
             log.error("No suitable parser found for log file: {}", e.getMessage());
             handleProcessingError(sessionId, e.getMessage());

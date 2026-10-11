@@ -39,6 +39,12 @@ public class LogSession {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @Column(name = "deleted_by")
+    private String deletedBy;
+
     @Column(name = "total_lines")
     private Integer totalLines = 0;
 

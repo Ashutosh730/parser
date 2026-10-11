@@ -31,7 +31,7 @@ public class UniversalLLMProvider {
         return spec
                 .user(request.getUserPrompt())
                 .options(ChatOptions.builder()
-                        .model(effectiveModel)
+                        .model(model)
                         .temperature(request.getTemperature())
                         .maxTokens(request.getMaxTokens())
                         .build())

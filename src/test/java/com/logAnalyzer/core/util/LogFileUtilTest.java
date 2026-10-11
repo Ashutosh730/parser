@@ -3,6 +3,7 @@ package com.logAnalyzer.core.util;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -53,5 +54,13 @@ class LogFileUtilTest {
         assertTrue(generated.endsWith(".log"));
         assertNotEquals(generated,
                 LogFileUtil.generateUniqueFileName("/logs/application.log"));
+    }
+
+    @Test
+    void shouldHandleLongNamesWithoutExtensionWithoutThrowing() {
+        String longName = "a".repeat(1024);
+
+        assertDoesNotThrow(() -> LogFileUtil.generateUniqueFileName(longName));
+        assertEquals("Invalid file", LogFileUtil.validateFileName(longName));
     }
 }

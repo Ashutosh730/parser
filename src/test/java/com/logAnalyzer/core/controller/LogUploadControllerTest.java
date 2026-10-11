@@ -1,9 +1,12 @@
 package com.logAnalyzer.core.controller;
 
+import com.logAnalyzer.core.model.StorageProperties;
 import com.logAnalyzer.auth.entity.User;
 import com.logAnalyzer.auth.repository.UserRepository;
 import com.logAnalyzer.core.entity.LogSession;
 import com.logAnalyzer.core.model.SessionResponse;
+import com.logAnalyzer.core.record.StoreRequest;
+import com.logAnalyzer.core.record.StoredObject;
 import com.logAnalyzer.core.repository.LogSessionRepository;
 import com.logAnalyzer.core.service.LogPipelineService;
 import com.logAnalyzer.core.service.impl.LocalStorageServiceImpl;
@@ -20,7 +23,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.file.Path;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,8 +32,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -43,6 +48,7 @@ class LogUploadControllerTest {
     @Mock private LogPipelineService pipelineService;
     @Mock private LogSessionServiceImpl sessionService;
     @Mock private LogSessionRepository sessionRepository;
+    @Mock private StorageProperties storageProperties;
     @Mock private UserRepository userRepository;
     @Mock private MultipartFile file;
     @Mock private UserDetails userDetails;
@@ -53,9 +59,9 @@ class LogUploadControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new LogController(
-                storageService, pipelineService, sessionService,
-                sessionRepository, userRepository);
+        StorageProperties props = new StorageProperties();
+        props.setMaxObjectSizeBytes(10L * 1024 * 1024);
+        controller = new LogController(storageService, pipelineService, sessionService, sessionRepository, userRepository, props);
     }
 
     @Test
@@ -85,24 +91,26 @@ class LogUploadControllerTest {
     }
 
     @Test
-    void upload_shouldStoreCreateAndProcessSession() {
-        Path storedFile = Path.of("application.log");
+    void upload_shouldStoreCreateAndProcessSession() throws Exception {
+        String content = "INFO startup\n";
+        StoredObject storedObject = new StoredObject("logs/application.log", content.getBytes(StandardCharsets.UTF_8).length, "text/plain", "local");
         givenValidFileAndUser();
-        when(storageService.upload(file)).thenReturn(storedFile);
-        when(sessionService.create("application.log", "application.log", "user-1"))
-                .thenReturn("session-1");
+        when(file.getInputStream()).thenReturn(new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)));
+        when(file.getSize()).thenReturn((long) content.getBytes(StandardCharsets.UTF_8).length);
+        when(file.getContentType()).thenReturn("text/plain");
+        when(storageService.store(any(StoreRequest.class))).thenReturn(storedObject);
 
         ResponseEntity<SessionResponse> response = controller.upload(file, userDetails);
 
         assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
         assertEquals("File uploaded successfully", response.getBody().getMessage());
         assertEquals("application.log", response.getBody().getFileName());
-        assertEquals("session-1", response.getBody().getSessionId());
+        assertNotNull(response.getBody().getSessionId());
 
         InOrder order = inOrder(storageService, sessionService, pipelineService);
-        order.verify(storageService).upload(file);
-        order.verify(sessionService).create("application.log", "application.log", "user-1");
-        order.verify(pipelineService).enqueueFile("session-1", storedFile);
+        order.verify(storageService).store(any(StoreRequest.class));
+        order.verify(sessionService).create(anyString(), eq("logs/application.log"), eq("user-1"), anyString());
+        order.verify(pipelineService).enqueueFile(anyString(), eq("logs/application.log"));
     }
 
     @Test
@@ -118,48 +126,53 @@ class LogUploadControllerTest {
     }
 
     @Test
-    void upload_shouldPropagateStorageFailure() {
+    void upload_shouldPropagateStorageFailure() throws Exception {
         givenValidFileAndUser();
-        when(storageService.upload(file)).thenThrow(new RuntimeException("Storage failure"));
+        when(file.getInputStream()).thenReturn(new ByteArrayInputStream("INFO startup\n".getBytes(StandardCharsets.UTF_8)));
+        when(file.getSize()).thenReturn(12L);
+        when(file.getContentType()).thenReturn("text/plain");
+        when(storageService.store(any(StoreRequest.class))).thenThrow(new RuntimeException("Storage failure"));
 
         RuntimeException exception = assertThrows(RuntimeException.class,
                 () -> controller.upload(file, userDetails));
 
         assertEquals("Storage failure", exception.getMessage());
-        verify(sessionService, never()).create(anyString(), anyString(), anyString());
+        verify(sessionService, never()).create(anyString(), anyString(), anyString(), anyString());
         verifyNoInteractions(pipelineService);
     }
 
     @Test
-    void upload_shouldReturnAcceptedWhenProcessingIsEnqueued() {
-        Path storedFile = Path.of("application.log");
+    void upload_shouldReturnAcceptedWhenProcessingIsEnqueued() throws Exception {
         givenValidFileAndUser();
-        when(storageService.upload(file)).thenReturn(storedFile);
-        when(sessionService.create("application.log", "application.log", "user-1"))
-                .thenReturn("session-1");
+        when(file.getInputStream()).thenReturn(new ByteArrayInputStream("INFO startup\n".getBytes(StandardCharsets.UTF_8)));
+        when(file.getSize()).thenReturn(12L);
+        when(file.getContentType()).thenReturn("text/plain");
+        when(storageService.store(any(StoreRequest.class))).thenReturn(new StoredObject("logs/application.log", 12L, "text/plain", "local"));
+        when(sessionService.create(anyString(), eq("logs/application.log"), eq("user-1"), anyString())).thenReturn("session-1");
+
         ResponseEntity<SessionResponse> response = controller.upload(file, userDetails);
 
         assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
-        verify(pipelineService).enqueueFile("session-1", storedFile);
+        verify(pipelineService).enqueueFile(anyString(), eq("logs/application.log"));
     }
 
     @Test
     void getSessions_shouldReturnMappedSessions() {
         givenUser();
-        when(sessionRepository.findByUserId("user-1")).thenReturn(List.of(session));
+        when(sessionRepository.findByUserIdAndDeletedAtIsNull("user-1")).thenReturn(List.of(session));
 
         ResponseEntity<List<SessionResponse>> response = controller.getSessions(userDetails);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(1, response.getBody().size());
-        verify(sessionRepository).findByUserId("user-1");
+        verify(sessionRepository).findByUserIdAndDeletedAtIsNull("user-1");
     }
 
     @Test
     void getSessions_shouldReturnEmptyListWhenNoSessionsExist() {
         givenUser();
-        when(sessionRepository.findByUserId("user-1")).thenReturn(List.of());
+        when(sessionRepository.findByUserIdAndDeletedAtIsNull("user-1")).thenReturn(List.of());
 
         ResponseEntity<List<SessionResponse>> response = controller.getSessions(userDetails);
 
@@ -181,15 +194,14 @@ class LogUploadControllerTest {
     }
 
     @Test
-    void getSessionById_shouldThrowWhenSessionIsMissing() {
+    void getSessionById_shouldReturnNotFoundWhenSessionIsMissing() {
         givenUser();
         when(sessionRepository.findByIdAndUserId("session-1", "user-1"))
                 .thenReturn(Optional.empty());
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> controller.getSessionById("session-1", userDetails));
+        ResponseEntity<SessionResponse> response = controller.getSessionById("session-1", userDetails);
 
-        assertEquals("Session not found", exception.getMessage());
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
     }
 
     @Test

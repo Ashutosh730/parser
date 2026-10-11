@@ -15,7 +15,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/logs/ai")
+@RequestMapping("/api/ai")
 @RequiredArgsConstructor
 public class LogAIController {
 
