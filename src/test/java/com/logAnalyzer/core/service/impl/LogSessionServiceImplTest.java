@@ -28,7 +28,7 @@ class LogSessionServiceImplTest {
         LogSessionServiceImpl service = new LogSessionServiceImpl(repository,
             mock(AiResultRepository.class), mock(LogEntryCustomEsRepository.class), mock(StorageService.class));
 
-        String id = service.create("application.log", "/uploads/application.log", "user-1");
+        String id = service.create("application.log", "/uploads/application.log", "user-1", "session-1");
 
         ArgumentCaptor<LogSession> captor = ArgumentCaptor.forClass(LogSession.class);
         verify(repository).save(captor.capture());

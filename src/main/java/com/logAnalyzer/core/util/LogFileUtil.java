@@ -38,7 +38,9 @@ public class LogFileUtil {
             return "Invalid file";
         }
 
-        String extension = filenameOnly.substring(lastDot).toLowerCase(Locale.ROOT);
+        String extension = lastDot >= 0 && lastDot < filenameOnly.length()
+                ? filenameOnly.substring(lastDot).toLowerCase(Locale.ROOT)
+                : "";
         if (!ALLOWED_EXTENSIONS.contains(extension)) {
             return "Only .log and .txt files are allowed";
         }
@@ -51,7 +53,7 @@ public class LogFileUtil {
         String uploadSessionId = UUID.randomUUID().toString();
 
         int lastDot = filenameOnly.lastIndexOf('.');
-        if (lastDot <= 0) {
+        if (lastDot <= 0 || lastDot >= filenameOnly.length() - 1) {
             return filenameOnly + "_" + uploadSessionId;
         }
 

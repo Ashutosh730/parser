@@ -1,6 +1,8 @@
 package com.logAnalyzer.core.repository;
 
 import com.logAnalyzer.core.entity.LogSession;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,5 +15,6 @@ public interface LogSessionRepository extends JpaRepository<LogSession, String> 
     List<LogSession> findByUserId(String userId);
     Optional<LogSession> findByIdAndUserId(String id, String userId);
     @Transactional
-    void deleteByIdAndUserId(String id, String userId);
+    Page<LogSession> findByUserIdAndDeletedAtIsNull(String userId, Pageable pageable);
+    Optional<LogSession> findByIdAndUserIdAndDeletedAtIsNull(String id, String userId);
 }

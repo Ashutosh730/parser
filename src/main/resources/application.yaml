@@ -41,6 +41,24 @@ spring:
 file:
   upload-dir: parser/src/main/resources/uploads
 
+storage:
+  type: s3
+  key-prefix: logs
+  max-object-size-bytes: 104857600
+  presigned-url-ttl-minutes: 15
+
+  # S3
+  bucket: ashutosh-log-analyzer-bucket
+  region: us-east-1
+  endpoint: ""
+  path-style-access: false
+  access-key: ${AWS_ACCESS_KEY_ID}
+  secret-key: ${AWS_SECRET_ACCESS_KEY}
+
+  # Local
+  local-base-dir: uploads
+  local-base-url: http://localhost:8081
+
 server:
   port: 8081
 
@@ -51,11 +69,11 @@ log:
       log4j: '^(?<timestamp>\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}[,\.]\d+)\s+\[(?<thread>.*?)\]\s+(?<level>\w+)\s+(?<className>[\w\.$]+)\s+-\s+(?<message>.*)$'
       simple-java: '^(?<timestamp>\w+\s+\d{1,2},\s+\d{4}\s+\d{1,2}:\d{2}:\d{2}\s+[AP]M)\s+(?<className>[\w\.]+)\s+(?<method>\w+)\n(?<level>\w+):\s+(?<message>.*)$'
 # application.yml
-logging:
-  level:
-    tracer: TRACE
-    org.springframework.data.elasticsearch.client: TRACE
-    org.springframework.web.client.RestClient: DEBUG
+#logging:
+#  level:
+#    tracer: TRACE
+#    org.springframework.data.elasticsearch.client: TRACE
+#    org.springframework.web.client.RestClient: DEBUG
 
 jwt:
   secret: ${JWT_SECRET}

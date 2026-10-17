@@ -26,6 +26,7 @@ import com.logAnalyzer.core.repository.LogSessionRepository;
 import lombok.RequiredArgsConstructor;
 
 import lombok.extern.slf4j.Slf4j;
+import org.antlr.v4.runtime.misc.InterpreterDataReader;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
@@ -402,10 +403,15 @@ public class AIServiceImpl implements AIService {
     private <T> T deserialize(String json, Class<T> targetClass) throws AiResponseParseException {
         try {
             // Strip markdown code blocks if LLM wraps response in ```json
-            String clean = json.replaceAll("```json|```", "").trim();
-
-            // This returns an instance of T, matching the new method return type
-            return objectMapper.readValue(clean, targetClass);
+            if(json != null) {
+                String clean = json.replaceAll("```json|```", "").trim();
+                // This returns an instance of T, matching the new method return type
+                return objectMapper.readValue(clean, targetClass);
+            }else{
+                return (T) InterpretedFilter.builder()
+                        .intent(QueryIntent.NOT_RECOGNIZED.name())
+                        .explanation("Not Result found").build();
+            }
         } catch (JsonProcessingException e) {
             throw new AiResponseParseException("Failed to parse root cause response", e);
         }

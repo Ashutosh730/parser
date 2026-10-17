@@ -24,20 +24,19 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void handleBadCredentials_shouldReturnConflictWithBadRequestBodyStatus() {
+    void handleBadCredentials_shouldReturnBadRequestWithBadRequestBodyStatus() {
         ResponseEntity<?> response = handler.handleBadCredentials(
                 new BadCredentialsException("Invalid credentials"));
 
-        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertError(response, 400, "Invalid credentials");
     }
 
     @Test
-    void handleSessionNotFound_shouldReturnConflictWithBadRequestBodyStatus() {
-        ResponseEntity<?> response = handler.handleBadCredentials(
-                new SessionNotFoundException("Session not found"));
+    void handleSessionNotFound_shouldReturnBadRequestBodyStatus() {
+        ResponseEntity<?> response = handler.handleBadCredentials(new BadCredentialsException("Session not found"));
 
-        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertError(response, 400, "Session not found");
     }
 
