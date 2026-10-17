@@ -1,12 +1,16 @@
 package com.logAnalyzer.auth.filter;
 
 import com.logAnalyzer.auth.service.JwtService;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -28,42 +32,66 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        // Extract Authorization header
         String authHeader = request.getHeader("Authorization");
 
-        // No token — skip filter, Security will handle 401
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Extract token
-        String token = authHeader.substring(7);  // remove "Bearer "
-        String email = null;
+        String token = authHeader.substring(7);
+
         try {
-            email = jwtService.extractEmail(token);
+            String email = jwtService.extractEmail(token);
+
+            if (email != null &&
+                    SecurityContextHolder.getContext().getAuthentication() == null) {
+
+                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+
+                if (jwtService.isTokenValid(token, email)) {
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails, null, userDetails.getAuthorities());
+                    authToken.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            }
+
+        } catch (ExpiredJwtException e) {
+            // Token expired — return specific error
+            sendErrorResponse(response, HttpStatus.UNAUTHORIZED,
+                    "TOKEN_EXPIRED", "Your session has expired. Please login again.");
+            return;  // ← stop filter chain, don't proceed
+
+        } catch (MalformedJwtException | SignatureException e) {
+            // Token tampered with
+            sendErrorResponse(response, HttpStatus.UNAUTHORIZED,
+                    "TOKEN_INVALID", "Invalid token.");
+            return;
+
         } catch (JwtException e) {
-            filterChain.doFilter(request, response);
+            // Any other JWT error
+            sendErrorResponse(response, HttpStatus.UNAUTHORIZED,
+                    "TOKEN_ERROR", "Token processing failed.");
             return;
         }
 
-        // Validate and set authentication
-        if (email != null
-            && SecurityContextHolder.getContext().getAuthentication() == null
-            && jwtService.isTokenValid(token, email)) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-
-            UsernamePasswordAuthenticationToken authToken =
-                new UsernamePasswordAuthenticationToken(
-                    userDetails,
-                    null,
-                    userDetails.getAuthorities()
-                );
-            authToken.setDetails(new WebAuthenticationDetailsSource()
-                .buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authToken);
-        }
-
         filterChain.doFilter(request, response);
+    }
+
+    private void sendErrorResponse(HttpServletResponse response,
+                                   HttpStatus status,
+                                   String errorCode,
+                                   String message) throws IOException {
+        response.setStatus(status.value());
+        response.setContentType("application/json");
+        response.getWriter().write(
+                String.format(
+                        "{\"error\":\"%s\",\"message\":\"%s\",\"status\":%d}",
+                        errorCode, message, status.value()
+                )
+        );
     }
 }
