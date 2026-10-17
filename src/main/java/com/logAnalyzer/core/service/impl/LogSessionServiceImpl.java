@@ -4,12 +4,15 @@ import com.logAnalyzer.ai.repository.AiResultRepository;
 import com.logAnalyzer.core.enums.LogSessionStatus;
 import com.logAnalyzer.core.entity.LogSession;
 import com.logAnalyzer.core.exception.SessionNotFoundException;
+import com.logAnalyzer.core.model.PagedResponse;
+import com.logAnalyzer.core.model.SessionResponse;
 import com.logAnalyzer.core.repository.LogEntryCustomEsRepository;
 import com.logAnalyzer.core.repository.LogSessionRepository;
 import com.logAnalyzer.core.service.SessionService;
 import com.logAnalyzer.core.service.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +29,8 @@ public class LogSessionServiceImpl implements SessionService {
     private final AiResultRepository aiResultRepository;
     private final LogEntryCustomEsRepository logEntryCustomEsRepository;
     private final StorageService storageService;
+
+    private static final int DEFAULT_PAGE_SIZE = 10;
 
     public String create(String originalFilename, String storagePath, String userId, String sessionId) {
         LogSession session = LogSession.builder()
@@ -83,5 +88,13 @@ public class LogSessionServiceImpl implements SessionService {
         aiResultRepository.deleteBySessionId(sessionId);
         logEntryCustomEsRepository.deleteBySessionId(sessionId);
         // optionally: storageService.delete(session.getStoragePath());
+    }
+
+    @Override
+    public PagedResponse<SessionResponse> getSessions(String userId, Pageable pageable) {
+        Page<SessionResponse> sessionPage = logSessionRepository
+                .findByUserIdAndDeletedAtIsNull(userId, pageable)
+                .map(com.logAnalyzer.core.mapper.SessionMapper::toResponse);
+        return PagedResponse.of(sessionPage);
     }
 }

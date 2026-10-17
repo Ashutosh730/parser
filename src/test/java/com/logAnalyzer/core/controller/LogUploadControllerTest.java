@@ -4,6 +4,8 @@ import com.logAnalyzer.core.model.StorageProperties;
 import com.logAnalyzer.auth.entity.User;
 import com.logAnalyzer.auth.repository.UserRepository;
 import com.logAnalyzer.core.entity.LogSession;
+import com.logAnalyzer.core.mapper.SessionMapper;
+import com.logAnalyzer.core.model.PagedResponse;
 import com.logAnalyzer.core.model.SessionResponse;
 import com.logAnalyzer.core.record.StoreRequest;
 import com.logAnalyzer.core.record.StoredObject;
@@ -17,6 +19,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -48,7 +53,6 @@ class LogUploadControllerTest {
     @Mock private LogPipelineService pipelineService;
     @Mock private LogSessionServiceImpl sessionService;
     @Mock private LogSessionRepository sessionRepository;
-    @Mock private StorageProperties storageProperties;
     @Mock private UserRepository userRepository;
     @Mock private MultipartFile file;
     @Mock private UserDetails userDetails;
@@ -159,25 +163,54 @@ class LogUploadControllerTest {
     @Test
     void getSessions_shouldReturnMappedSessions() {
         givenUser();
-        when(sessionRepository.findByUserIdAndDeletedAtIsNull("user-1")).thenReturn(List.of(session));
+        PagedResponse<SessionResponse> pagedResponse = PagedResponse.<SessionResponse>builder()
+                .content(List.of(SessionMapper.toResponse(session)))
+                .page(1)
+                .size(10)
+                .totalElements(11)
+                .totalPages(2)
+                .first(false)
+                .last(true)
+                .hasNext(false)
+                .hasPrevious(true)
+                .build();
 
-        ResponseEntity<List<SessionResponse>> response = controller.getSessions(userDetails);
+        Pageable pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "uploadedAt"));
+        when(sessionService.getSessions("user-1", pageable)).thenReturn(pagedResponse);
+
+        ResponseEntity<PagedResponse<SessionResponse>> response = controller.getSessions(userDetails, 0 , 20);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals(1, response.getBody().size());
-        verify(sessionRepository).findByUserIdAndDeletedAtIsNull("user-1");
+        assertEquals(1, response.getBody().getContent().size());
+        assertEquals(1, response.getBody().getPage());
+        assertEquals(11, response.getBody().getTotalElements());
+        verify(sessionService).getSessions("user-1", pageable);
     }
 
     @Test
     void getSessions_shouldReturnEmptyListWhenNoSessionsExist() {
         givenUser();
-        when(sessionRepository.findByUserIdAndDeletedAtIsNull("user-1")).thenReturn(List.of());
+        Pageable pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "uploadedAt"));
 
-        ResponseEntity<List<SessionResponse>> response = controller.getSessions(userDetails);
+        when(sessionService.getSessions("user-1", pageable))
+                .thenReturn(PagedResponse.<SessionResponse>builder()
+                        .content(List.of())
+                        .page(0)
+                        .size(10)
+                        .totalElements(0)
+                        .totalPages(0)
+                        .first(true)
+                        .last(true)
+                        .hasNext(false)
+                        .hasPrevious(false)
+                        .build());
+
+        ResponseEntity<PagedResponse<SessionResponse>> response = controller.getSessions(userDetails,0,20);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(response.getBody().isEmpty());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().getContent().isEmpty());
     }
 
     @Test

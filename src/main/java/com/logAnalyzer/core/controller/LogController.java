@@ -5,6 +5,7 @@ import com.logAnalyzer.auth.repository.UserRepository;
 import com.logAnalyzer.core.entity.LogSession;
 import com.logAnalyzer.core.exception.StorageException;
 import com.logAnalyzer.core.mapper.SessionMapper;
+import com.logAnalyzer.core.model.PagedResponse;
 import com.logAnalyzer.core.model.SessionResponse;
 import com.logAnalyzer.core.record.StoreRequest;
 import com.logAnalyzer.core.record.StoredObject;
@@ -14,6 +15,9 @@ import com.logAnalyzer.core.service.SessionService;
 import com.logAnalyzer.core.service.StorageService;
 import com.logAnalyzer.core.util.LogFileUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,7 +30,6 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -70,7 +73,7 @@ public class LogController {
 
         StoredObject stored;
         try (InputStream in = file.getInputStream()) {
-                stored = storageService.store(new StoreRequest(in, file.getSize(), file.getContentType(), userId, sessionId, file.getOriginalFilename(), Map.of("uploaded-by", userId)));
+            stored = storageService.store(new StoreRequest(in, file.getSize(), file.getContentType(), userId, sessionId, file.getOriginalFilename(), Map.of("uploaded-by", userId)));
         } catch (IOException e) {
             throw new StorageException("Failed to read uploaded file", e);
         }
@@ -101,20 +104,22 @@ public class LogController {
     }
 
     @GetMapping("/sessions")
-    public ResponseEntity<List<SessionResponse>> getSessions(@AuthenticationPrincipal UserDetails userDetails) {
-        String userId = getUserId(userDetails);
+    public ResponseEntity<PagedResponse<SessionResponse>> getSessions(@AuthenticationPrincipal UserDetails userDetails, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
 
-        List<LogSession> sessions = sessionRepository.findByUserIdAndDeletedAtIsNull(userId);
-        return ResponseEntity.ok(sessions.stream()
-                .map(SessionMapper::toResponse)
-                .toList());
+        // Guard against abuse: cap page size, reject negative values
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(Math.max(1, size), 100);
+
+        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "uploadedAt"));
+        String userId = getUserId(userDetails);
+        return ResponseEntity.ok(sessionService.getSessions(userId, pageable));
     }
 
     @GetMapping("/sessions/{sessionId}")
     public ResponseEntity<SessionResponse> getSessionById(@PathVariable String sessionId, @AuthenticationPrincipal UserDetails userDetails) {
         String userId = getUserId(userDetails);
 
-        if(userId == null || userId.isEmpty()) {
+        if (userId == null || userId.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
         Optional<LogSession> session = sessionRepository.findByIdAndUserId(sessionId, userId);
