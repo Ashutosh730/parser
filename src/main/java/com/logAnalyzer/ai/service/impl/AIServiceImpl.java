@@ -4,15 +4,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.logAnalyzer.ai.entity.AiResult;
 import com.logAnalyzer.ai.enums.AiFeatureEnum;
-import com.logAnalyzer.ai.enums.LlmProviderEnum;
 import com.logAnalyzer.ai.enums.QueryIntent;
-import com.logAnalyzer.ai.model.LlmRequest;
+import com.logAnalyzer.ai.model.LLMRequest;
 import com.logAnalyzer.ai.model.DiagnosisResponse;
 import com.logAnalyzer.ai.model.InterpretedFilter;
 import com.logAnalyzer.ai.model.NlQueryResponse;
 import com.logAnalyzer.ai.model.SummaryResponse;
 import com.logAnalyzer.ai.provider.LLMProvider;
-import com.logAnalyzer.ai.provider.LlmFactory;
+import com.logAnalyzer.ai.provider.LLMFactory;
 import com.logAnalyzer.ai.provider.UniversalLLMProvider;
 import com.logAnalyzer.ai.repository.AiResultRepository;
 import com.logAnalyzer.ai.service.AIService;
@@ -26,7 +25,6 @@ import com.logAnalyzer.core.repository.LogSessionRepository;
 import lombok.RequiredArgsConstructor;
 
 import lombok.extern.slf4j.Slf4j;
-import org.antlr.v4.runtime.misc.InterpreterDataReader;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
@@ -43,7 +41,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AIServiceImpl implements AIService {
 
-    private final LlmFactory llmFactory;
+    private final LLMFactory llmFactory;
     private final AiResultRepository aiResultRepository;
     private final LogSessionRepository sessionRepository;
     private final LogEntryEsRepository logEntryEsRepository;
@@ -174,7 +172,7 @@ public class AIServiceImpl implements AIService {
             """;
 
     @Override
-    public SummaryResponse summarizeLogs(String sessionId, String userId, LlmRequest request) {
+    public SummaryResponse summarizeLogs(String sessionId, String userId, LLMRequest request) {
         validateSessionOwnership(sessionId, userId);
         request = validateLlmRequest(request);
 
@@ -220,7 +218,7 @@ public class AIServiceImpl implements AIService {
     }
 
     @Override
-    public DiagnosisResponse analyse(String sessionId, String userId, LlmRequest request) throws AiResponseParseException {
+    public DiagnosisResponse analyse(String sessionId, String userId, LLMRequest request) throws AiResponseParseException {
         validateSessionOwnership(sessionId, userId);
         request = validateLlmRequest(request);
 
@@ -278,7 +276,7 @@ public class AIServiceImpl implements AIService {
     }
 
     @Override
-    public NlQueryResponse queryProcessor(String sessionId, String userId, LlmRequest request) throws AiResponseParseException {
+    public NlQueryResponse queryProcessor(String sessionId, String userId, LLMRequest request) throws AiResponseParseException {
         validateSessionOwnership(sessionId, userId);
         request = validateLlmRequest(request);
 
@@ -298,7 +296,7 @@ public class AIServiceImpl implements AIService {
         };
     }
 
-    private NlQueryResponse handleAggregation(String sessionId, LlmRequest request, InterpretedFilter filter) {
+    private NlQueryResponse handleAggregation(String sessionId, LLMRequest request, InterpretedFilter filter) {
         log.info("User query interpreted as AGGREGATION: {}", filter);
         Object aggregationResult = switch (filter.getAggregationType()) {
             case "COUNT_BY_LEVEL" ->
@@ -320,7 +318,7 @@ public class AIServiceImpl implements AIService {
                 .build();
     }
 
-    private NlQueryResponse handleSearch(String sessionId, LlmRequest request, InterpretedFilter filter) {
+    private NlQueryResponse handleSearch(String sessionId, LLMRequest request, InterpretedFilter filter) {
         log.info("User query interpreted as SEARCH: {}", filter);
         SearchHits<LogEntryDocument> hits = logEntryCustomEsRepository.getSearchResult(sessionId, filter);
         return NlQueryResponse.builder()
@@ -336,7 +334,7 @@ public class AIServiceImpl implements AIService {
                 .build();
     }
 
-    private NlQueryResponse handleFactExtraction(String sessionId, LlmRequest request, InterpretedFilter filter) {
+    private NlQueryResponse handleFactExtraction(String sessionId, LLMRequest request, InterpretedFilter filter) {
 
         // 1. Search ES for relevant lines using keywords from filter
         //    If no keywords extracted, use broad search — first 30 INFO lines
@@ -387,7 +385,7 @@ public class AIServiceImpl implements AIService {
                 .build();
     }
 
-    private NlQueryResponse handleUnsupported(LlmRequest request) {
+    private NlQueryResponse handleUnsupported(LLMRequest request) {
         return NlQueryResponse.builder()
                 .sessionId(null)
                 .originalQuery(request.getUserPrompt())
@@ -417,7 +415,7 @@ public class AIServiceImpl implements AIService {
         }
     }
 
-    private void cacheAiResponse(String sessionId, LlmRequest request, String summary, AiFeatureEnum feature) {
+    private void cacheAiResponse(String sessionId, LLMRequest request, String summary, AiFeatureEnum feature) {
         AiResult result = AiResult.builder()
                 .sessionId(sessionId)
                 .feature(feature)
@@ -429,7 +427,7 @@ public class AIServiceImpl implements AIService {
         aiResultRepository.save(result);
     }
 
-    private AiResult getCached(String sessionId, LlmRequest request, AiFeatureEnum feature) {
+    private AiResult getCached(String sessionId, LLMRequest request, AiFeatureEnum feature) {
         Optional<AiResult> cached = aiResultRepository.findBySessionIdAndFeature(sessionId, feature)
                 .stream()
                 .filter(aiResult ->
@@ -457,13 +455,13 @@ public class AIServiceImpl implements AIService {
                         "Session not found: " + sessionId));
     }
 
-    private LlmRequest validateLlmRequest(LlmRequest request) {
+    private LLMRequest validateLlmRequest(LLMRequest request) {
         if(request != null && request.getProvider() != null && request.getModel() != null) {
             return request;
         }
-        return LlmRequest.builder()
-                .provider(LlmProviderEnum.NVIDIA)
-                .model("nvidia/nemotron-3-super-120b-a12b")
+        return LLMRequest.builder()
+                .provider(LLMFactory.getDefaultProvider())
+                .model(LLMFactory.getDefaultModel())
                 .build();
     }
 

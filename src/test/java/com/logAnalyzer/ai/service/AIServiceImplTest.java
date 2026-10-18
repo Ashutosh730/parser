@@ -6,10 +6,10 @@ import com.logAnalyzer.ai.enums.AiFeatureEnum;
 import com.logAnalyzer.ai.enums.LlmProviderEnum;
 import com.logAnalyzer.ai.model.DiagnosisResponse;
 import com.logAnalyzer.ai.model.InterpretedFilter;
-import com.logAnalyzer.ai.model.LlmRequest;
+import com.logAnalyzer.ai.model.LLMRequest;
 import com.logAnalyzer.ai.model.NlQueryResponse;
 import com.logAnalyzer.ai.model.SummaryResponse;
-import com.logAnalyzer.ai.provider.LlmFactory;
+import com.logAnalyzer.ai.provider.LLMFactory;
 import com.logAnalyzer.ai.provider.LLMProvider;
 import com.logAnalyzer.ai.provider.UniversalLLMProvider;
 import com.logAnalyzer.ai.repository.AiResultRepository;
@@ -43,7 +43,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -52,7 +51,7 @@ import static org.mockito.Mockito.lenient;
 @ExtendWith(MockitoExtension.class)
 class AIServiceImplTest {
 
-    @Mock private LlmFactory llmFactory;
+    @Mock private LLMFactory llmFactory;
     @Mock private AiResultRepository aiResultRepository;
     @Mock private LogSessionRepository sessionRepository;
     @Mock private LogEntryEsRepository logEntryEsRepository;
@@ -75,7 +74,7 @@ class AIServiceImplTest {
 
     @Test
     void summarizeLogs_shouldReturnCachedResponse() {
-        LlmRequest request = request();
+        LLMRequest request = request();
         AiResult cached = AiResult.builder()
                 .result("cached summary")
                 .provider(LlmProviderEnum.NVIDIA)
@@ -94,7 +93,7 @@ class AIServiceImplTest {
 
     @Test
     void summarizeLogs_shouldReturnNoErrorsAndCacheResult() {
-        LlmRequest request = request();
+        LLMRequest request = request();
         when(aiResultRepository.findBySessionIdAndFeature(anyString(), eq(AiFeatureEnum.SUMMARY)))
                 .thenReturn(List.of());
         when(logEntryEsRepository.findBySessionIdAndLevelIn(anyString(), anyList(), any()))
@@ -110,7 +109,7 @@ class AIServiceImplTest {
 
     @Test
         void analyse_shouldReturnNoErrorsResponse() throws Throwable {
-        LlmRequest request = request();
+        LLMRequest request = request();
         when(aiResultRepository.findBySessionIdAndFeature(anyString(), eq(AiFeatureEnum.DIAGNOSIS)))
                 .thenReturn(List.of());
         when(logEntryEsRepository.findBySessionIdAndLevelIn(anyString(), anyList(), any()))
@@ -126,7 +125,7 @@ class AIServiceImplTest {
 
     @Test
         void analyse_shouldDeserializeProviderResponse() throws Throwable {
-        LlmRequest request = request();
+        LLMRequest request = request();
         LogEntryDocument error = LogEntryDocument.builder()
                 .level(LogLevel.ERROR).message("failure").build();
         DiagnosisResponse parsed = DiagnosisResponse.builder().impactSummary("impact").build();
@@ -149,7 +148,7 @@ class AIServiceImplTest {
 
     @Test
         void queryProcessor_shouldHandleUnsupportedIntent() throws Throwable {
-        LlmRequest request = request();
+        LLMRequest request = request();
         when(universalProvider.complete(request)).thenReturn("unsupported-json");
         when(objectMapper.readValue("unsupported-json", InterpretedFilter.class))
                 .thenReturn(InterpretedFilter.builder().intent("UNSUPPORTED").build());
@@ -164,7 +163,7 @@ class AIServiceImplTest {
 
     @Test
         void queryProcessor_shouldHandleSearchIntent() throws Throwable {
-        LlmRequest request = request();
+        LLMRequest request = request();
         LogEntryDocument result = LogEntryDocument.builder().id("entry-1").build();
         when(universalProvider.complete(request)).thenReturn("search-json");
         when(objectMapper.readValue("search-json", InterpretedFilter.class))
@@ -185,7 +184,7 @@ class AIServiceImplTest {
 
     @Test
         void queryProcessor_shouldHandleCountAggregation() throws Throwable {
-        LlmRequest request = request();
+        LLMRequest request = request();
         when(universalProvider.complete(request)).thenReturn("aggregation-json");
         when(objectMapper.readValue("aggregation-json", InterpretedFilter.class))
                 .thenReturn(InterpretedFilter.builder()
@@ -204,7 +203,7 @@ class AIServiceImplTest {
 
     @Test
         void queryProcessor_shouldReturnFactNotFoundWhenNoRelevantLogsExist() throws Throwable {
-        LlmRequest request = request();
+        LLMRequest request = request();
         when(universalProvider.complete(request)).thenReturn("fact-json");
         when(objectMapper.readValue("fact-json", InterpretedFilter.class))
                 .thenReturn(InterpretedFilter.builder()
@@ -222,7 +221,7 @@ class AIServiceImplTest {
 
     @Test
     void queryProcessor_shouldExtractFactFromRelevantLogs() throws Throwable {
-        LlmRequest request = request();
+        LLMRequest request = request();
         InterpretedFilter filter = InterpretedFilter.builder()
                 .intent("FACT_EXTRACTION")
                 .keywords(List.of("port"))
@@ -255,9 +254,9 @@ class AIServiceImplTest {
         assertEquals("NVIDIA", response.getProvider());
         assertEquals("model-1", response.getModel());
 
-        ArgumentCaptor<LlmRequest> requestCaptor = ArgumentCaptor.forClass(LlmRequest.class);
+        ArgumentCaptor<LLMRequest> requestCaptor = ArgumentCaptor.forClass(LLMRequest.class);
         verify(provider).complete(requestCaptor.capture());
-        LlmRequest providerRequest = requestCaptor.getValue();
+        LLMRequest providerRequest = requestCaptor.getValue();
         assertTrue(providerRequest.getSystemPrompt().contains("Answer the user's question directly"));
         assertEquals(150, providerRequest.getMaxTokens());
         assertEquals(0.0f, providerRequest.getTemperature());
@@ -276,8 +275,8 @@ class AIServiceImplTest {
         verifyNoInteractions(aiResultRepository, logEntryEsRepository, universalProvider);
     }
 
-    private LlmRequest request() {
-        return LlmRequest.builder()
+    private LLMRequest request() {
+        return LLMRequest.builder()
                 .userPrompt("query")
                 .provider(LlmProviderEnum.NVIDIA)
                 .model("model-1")

@@ -1,7 +1,7 @@
 package com.logAnalyzer.core.controller;
 
 import com.logAnalyzer.ai.model.DiagnosisResponse;
-import com.logAnalyzer.ai.model.LlmRequest;
+import com.logAnalyzer.ai.model.LLMRequest;
 import com.logAnalyzer.ai.model.NlQueryResponse;
 import com.logAnalyzer.ai.model.SummaryResponse;
 import com.logAnalyzer.ai.service.AIService;
@@ -23,19 +23,19 @@ public class LogAIController {
     private final UserRepository userRepository;
 
     @PostMapping("/summarise/{sessionId}")
-    public ResponseEntity<SummaryResponse> summarizeLogs(@PathVariable String sessionId, @RequestBody(required = false) LlmRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<SummaryResponse> summarizeLogs(@PathVariable String sessionId, @RequestBody(required = false) LLMRequest request, @AuthenticationPrincipal UserDetails userDetails) {
         String userId = getUserId(userDetails);
         return ResponseEntity.ok(aiService.summarizeLogs(sessionId, userId, request));
     }
 
     @PostMapping("/diagnose/{sessionId}")
-    public ResponseEntity<DiagnosisResponse> rootCause(@PathVariable String sessionId, @RequestBody(required = false) LlmRequest request, @AuthenticationPrincipal UserDetails userDetails) throws AiResponseParseException {
+    public ResponseEntity<DiagnosisResponse> rootCause(@PathVariable String sessionId, @RequestBody(required = false) LLMRequest request, @AuthenticationPrincipal UserDetails userDetails) throws AiResponseParseException {
         String userId = getUserId(userDetails);
         return ResponseEntity.ok(aiService.analyse(sessionId, userId, request));
     }
 
     @PostMapping("/query/{sessionId}")
-    public ResponseEntity<NlQueryResponse> search(@PathVariable String sessionId, @RequestBody(required = false) LlmRequest request, @AuthenticationPrincipal UserDetails userDetails) throws AiResponseParseException {
+    public ResponseEntity<NlQueryResponse> search(@PathVariable String sessionId, @RequestBody(required = false) LLMRequest request, @AuthenticationPrincipal UserDetails userDetails) throws AiResponseParseException {
         String userId = getUserId(userDetails);
         return ResponseEntity.ok(aiService.queryProcessor(sessionId, userId, request));
     }

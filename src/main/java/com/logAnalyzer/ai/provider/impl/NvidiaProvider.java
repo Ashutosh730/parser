@@ -1,7 +1,7 @@
 package com.logAnalyzer.ai.provider.impl;
 
 import com.logAnalyzer.ai.enums.LlmProviderEnum;
-import com.logAnalyzer.ai.model.LlmRequest;
+import com.logAnalyzer.ai.model.LLMRequest;
 import com.logAnalyzer.ai.provider.LLMProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
@@ -21,7 +21,7 @@ public class NvidiaProvider implements LLMProvider {
     private String model;
 
     @Override
-    public String complete(LlmRequest request) {
+    public String complete(LLMRequest request) {
         String effectiveModel = resolveEffectiveModel(request.getModel());
 
         var spec = chatClient.prompt();
