@@ -1,7 +1,7 @@
 package com.logAnalyzer.core.controller;
 
 import com.logAnalyzer.ai.model.DiagnosisResponse;
-import com.logAnalyzer.ai.model.LlmRequest;
+import com.logAnalyzer.ai.model.LLMRequest;
 import com.logAnalyzer.ai.model.NlQueryResponse;
 import com.logAnalyzer.ai.model.SummaryResponse;
 import com.logAnalyzer.ai.service.AIService;
@@ -51,7 +51,7 @@ class LogAIControllerTest {
 
     @Test
     void summarizeLogs_shouldDelegateToAiService() {
-        LlmRequest request = LlmRequest.builder().userPrompt("summarize").build();
+        LLMRequest request = LLMRequest.builder().userPrompt("summarize").build();
         SummaryResponse expected = SummaryResponse.builder()
                 .sessionId("session-1")
                 .summary("Summary")
@@ -70,7 +70,7 @@ class LogAIControllerTest {
 
     @Test
     void rootCause_shouldDelegateToAiService() throws AiResponseParseException {
-        LlmRequest request = LlmRequest.builder().userPrompt("diagnose").build();
+        LLMRequest request = LLMRequest.builder().userPrompt("diagnose").build();
         DiagnosisResponse expected = DiagnosisResponse.builder()
                 .sessionId("session-1")
                 .timeline("timeline")
@@ -89,7 +89,7 @@ class LogAIControllerTest {
 
     @Test
     void search_shouldDelegateToAiService() throws AiResponseParseException {
-        LlmRequest request = LlmRequest.builder().userPrompt("find errors").build();
+        LLMRequest request = LLMRequest.builder().userPrompt("find errors").build();
         NlQueryResponse expected = NlQueryResponse.builder()
                 .sessionId("session-1")
                 .originalQuery("find errors")

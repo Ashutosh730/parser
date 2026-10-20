@@ -1,7 +1,6 @@
 package com.logAnalyzer.ai.provider;
 
 import com.logAnalyzer.ai.enums.LlmProviderEnum;
-import com.logAnalyzer.ai.model.LlmRequest;
 import com.logAnalyzer.ai.provider.impl.NvidiaProvider;
 import com.logAnalyzer.ai.provider.impl.OpenAiProvider;
 import org.junit.jupiter.api.Test;

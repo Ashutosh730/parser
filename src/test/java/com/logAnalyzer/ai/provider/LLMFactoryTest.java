@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class LlmFactoryTest {
+class LLMFactoryTest {
 
     @Test
     void getProvider_shouldReturnProviderWithRequestedName() {
@@ -20,7 +20,7 @@ class LlmFactoryTest {
         when(nvidia.getProviderName()).thenReturn(LlmProviderEnum.NVIDIA);
         when(openAi.getProviderName()).thenReturn(LlmProviderEnum.OPENAI);
 
-        LLMProvider result = new LlmFactory(List.of(nvidia, openAi))
+        LLMProvider result = new LLMFactory(List.of(nvidia, openAi))
                 .getProvider(LlmProviderEnum.OPENAI);
 
         assertSame(openAi, result);
@@ -32,7 +32,7 @@ class LlmFactoryTest {
         when(provider.getProviderName()).thenReturn(LlmProviderEnum.NVIDIA);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> new LlmFactory(List.of(provider)).getProvider(LlmProviderEnum.OPENAI));
+                () -> new LLMFactory(List.of(provider)).getProvider(LlmProviderEnum.OPENAI));
 
         assertEquals("No suitable LLM provider found with name: OPENAI", exception.getMessage());
     }

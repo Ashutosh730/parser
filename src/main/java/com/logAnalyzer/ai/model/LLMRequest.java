@@ -6,7 +6,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class LlmRequest {
+public class LLMRequest {
     private String systemPrompt;
     private String userPrompt;
     private int maxTokens;

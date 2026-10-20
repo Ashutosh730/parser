@@ -1,6 +1,6 @@
 package com.logAnalyzer.ai.provider;
 
-import com.logAnalyzer.ai.model.LlmRequest;
+import com.logAnalyzer.ai.model.LLMRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.ChatOptions;
@@ -18,8 +18,7 @@ public class UniversalLLMProvider {
     @Value("${OPENAI_MODEL:nvidia/nemotron-3-super-120b-a12b}")
     private String model;
 
-    public String complete(LlmRequest request) {
-        String effectiveModel = resolveEffectiveModel(request.getModel());
+    public String complete(LLMRequest request) {
 
         var spec = chatClient.prompt();
 
@@ -37,16 +36,5 @@ public class UniversalLLMProvider {
                         .build())
                 .call()
                 .content();
-    }
-
-    String resolveEffectiveModel(String requestedModel) {
-        if (requestedModel == null || requestedModel.isBlank()) {
-            return model;
-        }
-        String sanitized = requestedModel.trim();
-        if (sanitized.toLowerCase(Locale.ROOT).contains(":free")) {
-            return model;
-        }
-        return sanitized;
     }
 }
