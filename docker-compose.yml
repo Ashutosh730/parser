@@ -63,7 +63,7 @@ services:
       # LLM API keys
       SPRING_AI_OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://integrate.api.nvidia.com}
       SPRING_AI_OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-nvidia/nemotron-3-super-120b-a12b}
+      OPENAI_MODEL: ${OPENAI_MODEL:-nvidia/nemotron-3.5-super-vl-120b-a12b}
 
     depends_on:
       postgres:

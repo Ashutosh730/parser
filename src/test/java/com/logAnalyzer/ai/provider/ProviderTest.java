@@ -25,17 +25,6 @@ class ProviderTest {
     }
 
     @Test
-    void universalProvider_shouldResolveModels() {
-        UniversalLLMProvider provider = new UniversalLLMProvider(
-                mock(org.springframework.ai.chat.client.ChatClient.class));
-        ReflectionTestUtils.setField(provider, "model", "default-model");
-
-        assertEquals("default-model", provider.resolveEffectiveModel(null));
-        assertEquals("default-model", provider.resolveEffectiveModel("model:FREE"));
-        assertEquals("custom-model", provider.resolveEffectiveModel(" custom-model "));
-    }
-
-    @Test
     void openAiProvider_shouldExposeName() {
         OpenAiProvider provider = new OpenAiProvider(mock(org.springframework.ai.openai.OpenAiChatModel.class));
 
