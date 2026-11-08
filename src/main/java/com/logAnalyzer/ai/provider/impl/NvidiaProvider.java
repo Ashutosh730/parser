@@ -17,7 +17,7 @@ public class NvidiaProvider implements LLMProvider {
 
     private final ChatClient chatClient;
 
-    @Value("${OPENAI_MODEL:nvidia/nemotron-3-super-120b-a12b}")
+    @Value("${OPENAI_MODEL:nvidia/nemotron-3.5-super-vl-120b-a12b}")
     private String model;
 
     @Override

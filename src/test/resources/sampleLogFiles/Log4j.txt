@@ -1,0 +1,9 @@
+2026-06-07 16:34:55,123 [main] INFO  com.example.service.UserService - User login successful for username: admin
+2026-06-07 16:35:01,789 [http-nio-8080-exec-2] DEBUG com.example.dao.UserDao - Executing SQL query: SELECT * FROM users WHERE id = 42
+2026-06-07 16:36:12,004 [scheduling-1] WARN  com.example.cache.CacheManager - Eviction threshold reached. Cleared 1500 expired items.
+2026-06-07 16:37:45,611 [http-nio-8080-exec-5] ERROR com.example.controller.OrderController - Failed to process checkout request.
+java.lang.NullPointerException: Cannot invoke "com.example.model.Cart.getItems()" because "cart" is null
+    at com.example.service.OrderService.createOrder(OrderService.java:45)
+    at com.example.controller.OrderController.checkout(OrderController.controller:82)
+    at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+2026-06-07 16:39:00,000 [Thread-0] FATAL com.example.AppInitializer - Out of memory error. Shutting down application context immediately.

@@ -22,6 +22,6 @@ public class LLMFactory {
     }
 
     public static String getDefaultModel(){
-        return "nvidia/nemotron-3-super-120b-a12b";
+        return "nvidia/nemotron-3.5-super-vl-120b-a12b";
     }
 }

@@ -1,6 +1,6 @@
 # Log Analyzer + AI — `Ashutosh730/parser`
 
-A Spring Boot service that ingests application log files, indexes them in **Elasticsearch**, caches AI output in **PostgreSQL**, and exposes JWT-secured endpoints for **summarization**, **root-cause diagnosis**, and **natural-language querying** of logs via an OpenAI-compatible LLM (default: NVIDIA NIM `nvidia/nemotron-3-super-120b-a12b`).
+A Spring Boot service that ingests application log files, indexes them in **Elasticsearch**, caches AI output in **PostgreSQL**, and exposes JWT-secured endpoints for **summarization**, **root-cause diagnosis**, and **natural-language querying** of logs via an OpenAI-compatible LLM (default: NVIDIA NIM `nvidia/nemotron-3.5-super-vl-120b-a12b`).
 
 > ℹ️ **Scope note:** The consolidated source covers the `ai`, `auth`, and `ParserApplication` packages. `AIServiceImpl` references `com.logAnalyzer.core.*` (`LogEntryDocument`, `LogSessionRepository`, `LogEntryEsRepository`, `LogEntryCustomEsRepository`, `LogLevel`, exception types) and the REST controllers for upload / AI endpoints; these are **not** in the excerpt. Sections marked *(inferred)* are reconstructed from those references plus `application.yaml`, `docker-compose.yml`, and the regex presets, and should be validated against the missing files.
 
@@ -73,7 +73,7 @@ A Spring Boot service that ingests application log files, indexes them in **Elas
 | Language / Runtime | Java **21** (Docker image uses JDK 23 — see [Tech Debt](#14-known-limitations--technical-debt)) |
 | Framework | Spring Boot **3.5.6** |
 | AI | Spring AI **1.0.1** (`spring-ai-starter-model-openai`) — used against an OpenAI-compatible endpoint |
-| Default LLM | `nvidia/nemotron-3-super-120b-a12b` via `https://integrate.api.nvidia.com` |
+| Default LLM | `nvidia/nemotron-3.5-super-vl-120b-a12b` via `https://integrate.api.nvidia.com` |
 | Auth | Spring Security + `jjwt` **0.12.6** |
 | Relational DB | PostgreSQL + **pgvector** (`pgvector/pgvector:pg15`) |
 | Search | Elasticsearch **8.11.0** (Spring Data Elasticsearch) |
@@ -798,7 +798,7 @@ curl -X POST localhost:8081/api/logs/upload \
   "maxTokens": 300,
   "temperature": 0.2,
   "provider": "NVIDIA",
-  "model": "nvidia/nemotron-3-super-120b-a12b"
+  "model": "nvidia/nemotron-3.5-super-vl-120b-a12b"
 }
 ```
 
@@ -813,7 +813,7 @@ curl -X POST localhost:8081/api/logs/upload \
   "summary": "…",
   "cached": false,
   "provider": "NVIDIA",
-  "model": "nvidia/nemotron-3-super-120b-a12b"
+  "model": "nvidia/nemotron-3.5-super-vl-120b-a12b"
 }
 ```
 </details>
@@ -881,7 +881,7 @@ curl -X POST localhost:8081/api/logs/upload \
 |---|---|---|
 | `SPRING_AI_OPENAI_BASE_URL` / `OPENAI_BASE_URL` | `https://integrate.api.nvidia.com` | Spring AI client |
 | `SPRING_AI_OPENAI_API_KEY` / `OPENAI_API_KEY` | *(empty)* | LLM calls |
-| `OPENAI_MODEL` | `nvidia/nemotron-3-super-120b-a12b` | `NvidiaProvider`, `UniversalLLMProvider` |
+| `OPENAI_MODEL` | `nvidia/nemotron-3.5-super-vl-120b-a12b` | `NvidiaProvider`, `UniversalLLMProvider` |
 | `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/log_analyzer` | JPA |
 | `SPRING_DATASOURCE_USERNAME` / `_PASSWORD` | `admin` / `admin` | JPA |
 | `SPRING_ELASTICSEARCH_URIS` | `http://localhost:9200` | Spring Data ES |
@@ -900,7 +900,7 @@ spring:
     openai:
       base-url: ${SPRING_AI_OPENAI_BASE_URL:${OPENAI_BASE_URL:https://integrate.api.nvidia.com}}
       api-key: ${SPRING_AI_OPENAI_API_KEY:${OPENAI_API_KEY:}}
-      chat.options.model: ${OPENAI_MODEL:nvidia/nemotron-3-super-120b-a12b}
+      chat.options.model: ${OPENAI_MODEL:nvidia/nemotron-3.5-super-vl-120b-a12b}
   jpa:
     hibernate.ddl-auto: update
     properties.hibernate.jdbc.time_zone: UTC
@@ -1101,7 +1101,7 @@ mvn test
 
 ### Correctness bugs
 
-1. **`UniversalLLMProvider` ignores its sanitized model.** It computes `effectiveModel = resolveEffectiveModel(...)` but then calls `.model(model)` (the field), so requests with an explicit model are silently overridden by `OPENAI_MODEL`.
+1. **Model access depends on the NVIDIA account.** The configured model must be available to the API key, and NVIDIA may require Public API Endpoints access for the account.
 2. **`validateLlmRequest` can discard the user prompt.** If `provider` or `model` is `null`, it returns a *brand-new* `LlmRequest` without `userPrompt`, so NLQ questions can be lost. It should copy fields, not rebuild.
 3. **`GET /auth/me` is `permitAll` but dereferences `userDetails`.** With no token, `userDetails` is `null` → NPE → HTTP 500 instead of 401.
 4. **NLQ system prompt typo.** `"AGGREGATION | "UNSUPPORTED` — missing closing quote and inconsistent with `QueryIntent` (enum has `NOT_RECOGNIZED`, prompt emits `UNSUPPORTED`). The `switch` default catches both, but the prompt is a malformed JSON schema.

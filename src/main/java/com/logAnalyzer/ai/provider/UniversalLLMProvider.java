@@ -15,7 +15,7 @@ public class UniversalLLMProvider {
 
     private final ChatClient chatClient;
 
-    @Value("${OPENAI_MODEL:nvidia/nemotron-3-super-120b-a12b}")
+    @Value("${OPENAI_MODEL:nvidia/nemotron-3.5-super-vl-120b-a12b}")
     private String model;
 
     public String complete(LLMRequest request) {
@@ -27,14 +27,20 @@ public class UniversalLLMProvider {
             spec = spec.system(request.getSystemPrompt());
         }
 
-        return spec
+        ChatClient.CallResponseSpec res =  spec
                 .user(request.getUserPrompt())
                 .options(ChatOptions.builder()
                         .model(model)
                         .temperature(request.getTemperature())
-                        .maxTokens(request.getMaxTokens())
+                        // Nemotron may consume tokens for reasoning before producing content.
+                        .maxTokens(Math.max(request.getMaxTokens(), 8192))
                         .build())
-                .call()
-                .content();
+                .call();
+        String content = res.content();
+        if (content == null || content.isBlank()) {
+            throw new IllegalStateException(
+                    "LLM returned no text content; the model may have exhausted its token budget while reasoning");
+        }
+        return content;
     }
 }

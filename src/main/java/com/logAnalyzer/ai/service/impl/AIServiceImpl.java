@@ -10,7 +10,6 @@ import com.logAnalyzer.ai.model.DiagnosisResponse;
 import com.logAnalyzer.ai.model.InterpretedFilter;
 import com.logAnalyzer.ai.model.NlQueryResponse;
 import com.logAnalyzer.ai.model.SummaryResponse;
-import com.logAnalyzer.ai.provider.LLMProvider;
 import com.logAnalyzer.ai.provider.LLMFactory;
 import com.logAnalyzer.ai.provider.UniversalLLMProvider;
 import com.logAnalyzer.ai.repository.AiResultRepository;
@@ -35,6 +34,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import static com.logAnalyzer.ai.enums.QueryIntent.NOT_RECOGNIZED;
 
 @Slf4j
 @Service
@@ -98,7 +99,7 @@ public class AIServiceImpl implements AIService {
             
             Respond ONLY in this JSON format, no extra text:
             {
-                "intent": "SEARCH" | "AGGREGATION | "UNSUPPORTED | "FACT_EXTRACTION",
+                "intent": "SEARCH" | "AGGREGATION" | "UNSUPPORTED" | "FACT_EXTRACTION",
                 "keywords": ["specific", "search", "terms"],
                 "levels": ["ERROR", "WARN", "INFO", "DEBUG", null],
                 "timeFrom": "ISO-8601 timestamp or null",
@@ -287,6 +288,9 @@ public class AIServiceImpl implements AIService {
 
         String rawJson = universalLLMProvider.complete(request);
         InterpretedFilter filter = deserialize(rawJson, InterpretedFilter.class);
+        if(filter.getIntent() == null) {
+            filter.setIntent(String.valueOf(NOT_RECOGNIZED));
+        }
 
         return switch (filter.getIntent()) {
             case "SEARCH"             -> handleSearch(sessionId, request, filter);
@@ -369,8 +373,7 @@ public class AIServiceImpl implements AIService {
         request.setMaxTokens(150);
         request.setTemperature(0.0);
         request.setUserPrompt(request.getUserPrompt() + "\n\nLog Context:\n" + logContext);
-        LLMProvider provider = llmFactory.getProvider(request.getProvider());
-        String answer = provider.complete(request);
+        String answer = universalLLMProvider.complete(request);
 
         return NlQueryResponse.builder()
                 .sessionId(sessionId)
@@ -407,7 +410,7 @@ public class AIServiceImpl implements AIService {
                 return objectMapper.readValue(clean, targetClass);
             }else{
                 return (T) InterpretedFilter.builder()
-                        .intent(QueryIntent.NOT_RECOGNIZED.name())
+                        .intent(NOT_RECOGNIZED.name())
                         .explanation("Not Result found").build();
             }
         } catch (JsonProcessingException e) {
@@ -452,7 +455,7 @@ public class AIServiceImpl implements AIService {
     private void validateSessionOwnership(String sessionId, String userId) {
         sessionRepository.findByIdAndUserId(sessionId, userId)
                 .orElseThrow(() -> new SessionNotFoundException(
-                        "Session not found: " + sessionId));
+                        "SessionId not found: " + sessionId));
     }
 
     private LLMRequest validateLlmRequest(LLMRequest request) {

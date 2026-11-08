@@ -3,13 +3,16 @@ package com.logAnalyzer.core.strategy.langparser.java.subparser;
 import com.logAnalyzer.core.enums.DetectedFramework;
 import com.logAnalyzer.core.enums.LogLevel;
 import com.logAnalyzer.core.model.ParsedLog;
+import com.logAnalyzer.core.service.LogParserConfigService;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class JavaSubParserTest {
 
@@ -22,8 +25,7 @@ class JavaSubParserTest {
 
     @Test
     void springBootParser_shouldParseAndAppendContinuationLines() {
-        SpringBootParser parser = new SpringBootParser();
-        ReflectionTestUtils.setField(parser, "logFormat", SPRING_BOOT_REGEX);
+        SpringBootParser parser = new SpringBootParser(configService(SPRING_BOOT_REGEX, "spring-boot"));
         String entry = "2026-09-27T10:15:30Z ERROR 42 --- [app] [ main ] com.example.App : failure"
                 + "\n\tat com.example.App.run(App.java:1)";
 
@@ -41,8 +43,7 @@ class JavaSubParserTest {
 
     @Test
     void springBootParser_shouldReturnRawLogForNullAndUnmatchedInput() {
-        SpringBootParser parser = new SpringBootParser();
-        ReflectionTestUtils.setField(parser, "logFormat", SPRING_BOOT_REGEX);
+        SpringBootParser parser = new SpringBootParser(configService(SPRING_BOOT_REGEX, "spring-boot"));
 
         assertEquals(null, parser.parse(null).getRawLog());
         assertFalse(parser.canParse("not a spring boot line"));
@@ -51,8 +52,7 @@ class JavaSubParserTest {
 
     @Test
     void log4jParser_shouldParseCommaAndDotTimestampFormats() {
-        Log4jParser parser = new Log4jParser();
-        ReflectionTestUtils.setField(parser, "logFormat", LOG4J_REGEX);
+        Log4jParser parser = new Log4jParser(configService(LOG4J_REGEX, "log4j"));
 
         ParsedLog comma = parser.parse("2026-09-27 10:15:30,123 [main] WARN com.example.App - warning");
 
@@ -66,8 +66,7 @@ class JavaSubParserTest {
 
     @Test
     void log4jParser_shouldReturnRawLogForNullAndUnmatchedInput() {
-        Log4jParser parser = new Log4jParser();
-        ReflectionTestUtils.setField(parser, "logFormat", LOG4J_REGEX);
+        Log4jParser parser = new Log4jParser(configService(LOG4J_REGEX, "log4j"));
 
         assertEquals(null, parser.parse(null).getRawLog());
         assertEquals("raw", parser.parse("raw").getRawLog());
@@ -75,12 +74,22 @@ class JavaSubParserTest {
 
     @Test
     void simpleJavaParser_shouldDetectInputAndReturnRawLogForUnmatchedInput() {
-        SimpleJavaParser parser = new SimpleJavaParser();
-        ReflectionTestUtils.setField(parser, "logFormat", SIMPLE_REGEX);
-        String entry = "Sep 27, 2026 10:15:30 AM Example run\nERROR: failure";
+        SimpleJavaParser parser = new SimpleJavaParser(configService(SIMPLE_REGEX, "simple-java"));
+        String entry = "2026-10-17 09:21:40 com.example.PaymentGatewayClient call\n" +
+                "ERROR: Payment gateway request timed out after 30000ms\n" +
+                "java.net.SocketTimeoutException: Read timed out\n" +
+                "\tat java.base/java.net.SocketInputStream.socketRead0(Native Method)\n" +
+                "\tat com.example.gateway.PaymentGatewayClient.execute(PaymentGatewayClient.java:87)";
 
         assertTrue(parser.canParse(entry));
         assertThrows(java.time.format.DateTimeParseException.class, () -> parser.parse(entry));
         assertEquals("raw", parser.parse("raw").getRawLog());
+    }
+
+    private LogParserConfigService configService(String regex, String framework) {
+        LogParserConfigService configService = mock(LogParserConfigService.class);
+        when(configService.getFrameworkPattern(eq("java"), eq(framework)))
+                .thenReturn(java.util.regex.Pattern.compile(regex));
+        return configService;
     }
 }

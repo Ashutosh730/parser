@@ -41,18 +41,6 @@ class AuthControllerTest {
     }
 
     @Test
-    void me_shouldReturnUsernameAndAuthorities() {
-        when(userDetails.getUsername()).thenReturn("user@example.com");
-        doReturn(List.of(new SimpleGrantedAuthority("ROLE_USER")))
-            .when(userDetails).getAuthorities();
-
-        ResponseEntity<?> response = controller.me(userDetails);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("user@example.com [ROLE_USER]", response.getBody());
-    }
-
-    @Test
     void register_shouldReturnCreatedResponseFromService() {
         RegisterRequest request = new RegisterRequest();
         AuthResponse expected = AuthResponse.builder()

@@ -1,0 +1,211 @@
+2026-10-17 09:00:00 com.example.Main main
+INFO: Starting OrderManagementApplication v1.4.2
+
+2026-10-17 09:00:01 com.example.Main main
+INFO: Active profiles: production
+
+2026-10-17 09:00:02 com.example.DatabaseConfig initialize
+INFO: Connecting to PostgreSQL at jdbc:postgresql://localhost:5432/orders
+
+2026-10-17 09:00:03 com.example.DatabaseConfig initialize
+INFO: HikariCP pool initialized (max=20, min=5, idleTimeout=600000)
+
+2026-10-17 09:00:04 com.example.RedisConfig initialize
+INFO: Redis connection established at localhost:6379
+
+2026-10-17 09:00:05 com.example.KafkaConfig initialize
+INFO: Kafka producer initialized with bootstrap.servers=localhost:9092
+
+2026-10-17 09:00:06 com.example.KafkaConfig initialize
+INFO: Kafka consumer subscribed to topic=order-events
+
+2026-10-17 09:00:07 com.example.Main main
+INFO: Tomcat started on port 8080 (http) with context path ''
+
+2026-10-17 09:00:07 com.example.Main main
+INFO: Application started in 7.482 seconds
+
+2026-10-17 09:05:12 com.example.UserService registerUser
+INFO: User registration request received: email=alice@example.com
+
+2026-10-17 09:05:12 com.example.UserService registerUser
+DEBUG: Validating email format: alice@example.com
+
+2026-10-17 09:05:13 com.example.UserService registerUser
+INFO: User registered successfully: userId=1001, email=alice@example.com
+
+2026-10-17 09:06:30 com.example.UserService registerUser
+INFO: User registration request received: email=bob@example.com
+
+2026-10-17 09:06:31 com.example.UserService registerUser
+INFO: User registered successfully: userId=1002, email=bob@example.com
+
+2026-10-17 09:07:15 com.example.UserService registerUser
+INFO: User registration request received: email=invalid-email
+
+2026-10-17 09:07:15 com.example.UserService registerUser
+WARN: Email validation failed: invalid-email
+
+2026-10-17 09:08:00 com.example.ProductService listProducts
+INFO: Fetching product catalog (page=0, size=20)
+
+2026-10-17 09:08:00 com.example.ProductService listProducts
+DEBUG: Cache hit for product catalog page 0
+
+2026-10-17 09:08:01 com.example.ProductService listProducts
+INFO: Returned 20 products in 12ms
+
+2026-10-17 09:10:00 com.example.OrderService createOrder
+INFO: Order creation request: userId=1001, items=3, total=$149.97
+
+2026-10-17 09:10:01 com.example.InventoryService checkStock
+INFO: Stock check passed for all items (orderId=5001)
+
+2026-10-17 09:10:02 com.example.OrderService createOrder
+INFO: Order created successfully: orderId=5001, userId=1001, total=$149.97
+
+2026-10-17 09:10:02 com.example.KafkaProducerService publishOrderCreated
+INFO: Published order-created event: orderId=5001
+
+2026-10-17 09:10:03 com.example.NotificationService sendOrderConfirmation
+INFO: Order confirmation email queued for alice@example.com
+
+2026-10-17 09:15:20 com.example.OrderService createOrder
+INFO: Order creation request: userId=1002, items=1, total=$0.50
+
+2026-10-17 09:15:20 com.example.OrderService validateOrder
+WARN: Order amount below minimum threshold ($1.00): orderId=5002, amount=$0.50
+
+2026-10-17 09:15:21 com.example.OrderService createOrder
+INFO: Order created successfully: orderId=5002, userId=1002, total=$0.50
+
+2026-10-17 09:20:00 com.example.PaymentService processPayment
+INFO: Processing payment: orderId=5001, amount=$149.97, gateway=STRIPE
+
+2026-10-17 09:20:01 com.example.PaymentGatewayClient call
+DEBUG: Sending POST to https://api.stripe.com/v1/charges
+
+2026-10-17 09:20:31 com.example.PaymentGatewayClient call
+ERROR: Payment gateway request timed out after 30000ms
+java.net.SocketTimeoutException: Read timed out
+	at java.base/java.net.SocketInputStream.socketRead0(Native Method)
+	at java.base/java.net.SocketInputStream.socketRead(SocketInputStream.java:115)
+	at java.base/java.net.SocketInputStream.read(SocketInputStream.java:168)
+	at com.example.gateway.PaymentGatewayClient.execute(PaymentGatewayClient.java:87)
+	at com.example.gateway.PaymentGatewayClient.call(PaymentGatewayClient.java:52)
+	at com.example.PaymentService.processPayment(PaymentService.java:142)
+	at com.example.OrderController.checkout(OrderController.java:56)
+
+2026-10-17 09:20:31 com.example.PaymentService processPayment
+WARN: Payment failed for orderId=5001, scheduling retry (attempt 1 of 3)
+
+2026-10-17 09:20:35 com.example.PaymentService processPayment
+INFO: Retrying payment: orderId=5001, attempt 2 of 3
+
+2026-10-17 09:21:05 com.example.PaymentGatewayClient call
+ERROR: Payment gateway request timed out after 30000ms
+java.net.SocketTimeoutException: Read timed out
+	at java.base/java.net.SocketInputStream.socketRead0(Native Method)
+	at java.base/java.net.SocketInputStream.socketRead(SocketInputStream.java:115)
+	at com.example.gateway.PaymentGatewayClient.execute(PaymentGatewayClient.java:87)
+
+2026-10-17 09:21:05 com.example.PaymentService processPayment
+WARN: Payment failed for orderId=5001, scheduling retry (attempt 2 of 3)
+
+2026-10-17 09:21:10 com.example.PaymentService processPayment
+INFO: Retrying payment: orderId=5001, attempt 3 of 3
+
+2026-10-17 09:21:40 com.example.PaymentGatewayClient call
+ERROR: Payment gateway request timed out after 30000ms
+java.net.SocketTimeoutException: Read timed out
+	at java.base/java.net.SocketInputStream.socketRead0(Native Method)
+	at com.example.gateway.PaymentGatewayClient.execute(PaymentGatewayClient.java:87)
+
+2026-10-17 09:21:40 com.example.PaymentService processPayment
+ERROR: Payment failed permanently for orderId=5001 after 3 attempts
+com.example.exception.PaymentFailedException: Gateway unreachable after 3 retries
+	at com.example.PaymentService.processPayment(PaymentService.java:156)
+	at com.example.OrderController.checkout(OrderController.java:56)
+
+2026-10-17 09:21:41 com.example.OrderService markOrderFailed
+WARN: Order 5001 marked as PAYMENT_FAILED
+
+2026-10-17 09:21:41 com.example.NotificationService sendPaymentFailureEmail
+INFO: Payment failure notification sent to alice@example.com
+
+2026-10-17 09:25:00 com.example.PaymentService processPayment
+INFO: Processing payment: orderId=5002, amount=$0.50, gateway=STRIPE
+
+2026-10-17 09:25:03 com.example.PaymentService processPayment
+INFO: Payment successful: orderId=5002, transactionId=txn_9x8y7z
+
+2026-10-17 09:25:03 com.example.KafkaProducerService publishPaymentCompleted
+INFO: Published payment-completed event: orderId=5002, txn=txn_9x8y7z
+
+2026-10-17 09:30:00 com.example.ReportService generateDailyReport
+INFO: Generating daily sales report for 2026-10-17
+
+2026-10-17 09:30:05 com.example.ReportService querySalesData
+WARN: Slow query detected: execution time 4523ms exceeds threshold 2000ms
+com.example.SlowQueryWarning: SELECT * FROM orders WHERE created_at >= ? AND status = ?
+	at com.example.ReportService.querySalesData(ReportService.java:78)
+	at com.example.ReportService.generateDailyReport(ReportService.java:42)
+
+2026-10-17 09:30:08 com.example.ReportService generateDailyReport
+INFO: Daily sales report generated: 142 orders, $12,450.75 total revenue
+
+2026-10-17 09:35:00 com.example.UserService getUserProfile
+ERROR: NullPointerException while loading user profile
+java.lang.NullPointerException: Cannot invoke "com.example.model.User.getEmail()" because "user" is null
+	at com.example.UserService.getUserProfile(UserService.java:88)
+	at com.example.UserController.getProfile(UserController.java:34)
+
+2026-10-17 09:35:00 com.example.GlobalExceptionHandler handleNullPointer
+WARN: Returning 500 for userId=9999 — user not found
+
+2026-10-17 09:40:00 com.example.JobScheduler runCleanupJob
+INFO: Starting cleanup job: purge expired sessions
+
+2026-10-17 09:40:02 com.example.JobScheduler runCleanupJob
+INFO: Cleanup complete: 0 expired sessions, 0 orphaned records
+
+2026-10-17 09:45:00 com.example.DatabaseConfig getConnection
+ERROR: Failed to acquire database connection from pool
+java.sql.SQLTransientConnectionException: HikariPool-1 - Connection is not available, request timed out after 30000ms.
+	at com.zaxxer.hikari.pool.HikariPool.createTimeoutException(HikariPool.java:696)
+	at com.zaxxer.hikari.pool.HikariPool.getConnection(HikariPool.java:181)
+	at com.example.repository.OrderRepository.findByUserId(OrderRepository.java:44)
+	at com.example.OrderService.getOrdersForUser(OrderService.java:102)
+Caused by: java.sql.SQLTransientConnectionException: Connection is not available
+	at com.zaxxer.hikari.pool.HikariPool.getConnection(HikariPool.java:170)
+	... 5 more
+
+2026-10-17 09:45:01 com.example.DatabaseConfig getConnection
+WARN: Connection pool exhaustion detected (active=20, idle=0, waiting=8)
+
+2026-10-17 09:45:05 com.example.DatabaseConfig getConnection
+ERROR: Failed to acquire database connection from pool
+java.sql.SQLTransientConnectionException: HikariPool-1 - Connection is not available, request timed out after 30000ms.
+	at com.zaxxer.hikari.pool.HikariPool.createTimeoutException(HikariPool.java:696)
+	at com.example.repository.OrderRepository.findByUserId(OrderRepository.java:44)
+
+2026-10-17 09:45:10 com.example.MonitoringService checkHealth
+WARN: Health check degraded: database response time 4523ms
+
+2026-10-17 09:45:30 com.example.DatabaseConfig getConnection
+INFO: Connection pool recovered (active=3, idle=17, waiting=0)
+
+2026-10-17 09:46:00 com.example.OrderService createOrder
+INFO: Order creation request: userId=1001, items=2, total=$79.98
+
+2026-10-17 09:46:01 com.example.OrderService createOrder
+INFO: Order created successfully: orderId=5003, userId=1001, total=$79.98
+
+2026-10-17 09:50:00 com.example.Main main
+INFO: Received SIGTERM — initiating graceful shutdown
+
+2026-10-17 09:50:01 com.example.Main main
+INFO: Closing Kafka producer...
+
+2026-10-17 09:50:02 com.example.Main main
+INFO: Application shutdown complete

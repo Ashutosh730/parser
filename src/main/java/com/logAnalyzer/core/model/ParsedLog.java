@@ -16,6 +16,7 @@ public class ParsedLog {
     private String thread;
     private String className;
     private String message;
+    private String method;
     private String pid;
     private DetectedFramework framework;
 

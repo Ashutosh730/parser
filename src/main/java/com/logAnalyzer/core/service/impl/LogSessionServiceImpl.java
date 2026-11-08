@@ -30,8 +30,6 @@ public class LogSessionServiceImpl implements SessionService {
     private final LogEntryCustomEsRepository logEntryCustomEsRepository;
     private final StorageService storageService;
 
-    private static final int DEFAULT_PAGE_SIZE = 10;
-
     public String create(String originalFilename, String storagePath, String userId, String sessionId) {
         LogSession session = LogSession.builder()
                 .id(sessionId)
@@ -78,7 +76,7 @@ public class LogSessionServiceImpl implements SessionService {
     public void delete(String sessionId, String userId) {
         LogSession session = logSessionRepository
                 .findByIdAndUserIdAndDeletedAtIsNull(sessionId, userId)
-                .orElseThrow(() -> new SessionNotFoundException("Not found: " + sessionId));
+                .orElseThrow(() -> new SessionNotFoundException("SessionId Not found: " + sessionId));
 
         session.setDeletedAt(LocalDateTime.now());
         session.setDeletedBy(userId);
