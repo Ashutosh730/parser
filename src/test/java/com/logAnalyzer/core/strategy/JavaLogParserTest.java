@@ -22,6 +22,7 @@ class JavaLogParserTest {
         assertTrue(parser.isParsable(List.of("2026-09-27 INFO --- [main]")));
         assertTrue(parser.isParsable(List.of("Sep 27, 2026 10:15:30 AM Example method\nERROR: failure")));
         assertTrue(parser.isParsable(List.of("2026-09-27 [main] - message")));
+        assertTrue(parser.isParsable(List.of("2026-10-17 09:00:00 com.example.Main main")));
     }
 
     @Test
@@ -41,6 +42,7 @@ class JavaLogParserTest {
         assertFalse(parser.isPrimaryLine("Caused by: failure"));
         assertFalse(parser.isPrimaryLine("\t... 3 common frames omitted"));
         assertTrue(parser.isPrimaryLine("2026-09-27 INFO --- [main]"));
+        assertTrue(parser.isPrimaryLine("2026-10-17 09:00:00 com.example.Main main"));
     }
 
     @Test

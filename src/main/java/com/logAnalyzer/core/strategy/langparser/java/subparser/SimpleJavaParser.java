@@ -1,5 +1,6 @@
 package com.logAnalyzer.core.strategy.langparser.java.subparser;
 
+import com.logAnalyzer.core.enums.DetectedFramework;
 import com.logAnalyzer.core.strategy.langparser.java.JavaSubParser;
 import com.logAnalyzer.core.enums.LogLevel;
 import com.logAnalyzer.core.model.ParsedLog;
@@ -28,19 +29,18 @@ public class SimpleJavaParser implements JavaSubParser {
         Pattern pattern = Pattern.compile(logFormat);
         var matcher = pattern.matcher(logLine);
         if(matcher.matches()) {
-            Instant formattedTimeStamp = parseTimestamp(matcher.group("timestamp"),"");
+            Instant formattedTimeStamp = parseTimestamp(matcher.group("timestamp"),"yyyy-MM-dd HH:mm:ss");
             String level = matcher.group("level");
             String thread = matcher.group("thread").trim();
             String className = matcher.group("className");
-            String pid = matcher.group("pid");
             String message = matcher.group("message");
             return ParsedLog.builder()
                     .timestamp(formattedTimeStamp)
                     .level(LogLevel.valueOf(level))
                     .thread(thread)
                     .className(className)
+                    .framework(DetectedFramework.SIMPLE_JAVA)
                     .message(message)
-                    .pid(pid)
                     .build();
         }
         return ParsedLog.builder()

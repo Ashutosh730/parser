@@ -31,6 +31,11 @@ public class JavaLogParser implements LogParser {
             return true;
         }
 
+        // Two-line Java format: timestamp, class, and method on the header line.
+        if (logLine.trim().matches("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\s+[\\w.$]+\\s+[\\w$<>]+$")) {
+            return true;
+        }
+
         // Simple Java pattern
         if(logLine.matches("(?s).*\\w{3} \\d{2}, \\d{4} \\d{2}:\\d{2}:\\d{2} [AP]M .*\\n.*")) {
             return true;

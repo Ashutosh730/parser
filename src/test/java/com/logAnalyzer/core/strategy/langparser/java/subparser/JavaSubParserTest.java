@@ -77,7 +77,11 @@ class JavaSubParserTest {
     void simpleJavaParser_shouldDetectInputAndReturnRawLogForUnmatchedInput() {
         SimpleJavaParser parser = new SimpleJavaParser();
         ReflectionTestUtils.setField(parser, "logFormat", SIMPLE_REGEX);
-        String entry = "Sep 27, 2026 10:15:30 AM Example run\nERROR: failure";
+        String entry = "2026-10-17 09:21:40 com.example.PaymentGatewayClient call\n" +
+                "ERROR: Payment gateway request timed out after 30000ms\n" +
+                "java.net.SocketTimeoutException: Read timed out\n" +
+                "\tat java.base/java.net.SocketInputStream.socketRead0(Native Method)\n" +
+                "\tat com.example.gateway.PaymentGatewayClient.execute(PaymentGatewayClient.java:87)";
 
         assertTrue(parser.canParse(entry));
         assertThrows(java.time.format.DateTimeParseException.class, () -> parser.parse(entry));
