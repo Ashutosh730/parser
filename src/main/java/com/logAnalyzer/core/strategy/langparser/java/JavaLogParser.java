@@ -6,10 +6,22 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
 public class JavaLogParser implements LogParser {
+
+    private static final List<String> JAVA_LOG_REGEXES = List.of(
+            "(?s).*---.*\\[.*",
+            "^\\s*\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\s+[\\w.$]+\\s+[\\w$<>]+\\s*$",
+            "(?s).*\\w{3} \\d{2}, \\d{4} \\d{2}:\\d{2}:\\d{2} [AP]M .*\\n.*",
+            ".*\\d{4}-\\d{2}-\\d{2}.*\\[.*].*-.*"
+    );
+
+    private static final List<Pattern> JAVA_LOG_PATTERNS = JAVA_LOG_REGEXES.stream()
+            .map(Pattern::compile)
+            .toList();
 
     private final List<JavaSubParser> javaSubParser;
 
@@ -26,24 +38,8 @@ public class JavaLogParser implements LogParser {
     private boolean canParse(String logLine) {
         if (logLine == null) return false;
 
-        // Spring Boot pattern hint
-        if (logLine.contains("---") && logLine.contains("[")) {
-            return true;
-        }
-
-        // Two-line Java format: timestamp, class, and method on the header line.
-        if (logLine.trim().matches("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\s+[\\w.$]+\\s+[\\w$<>]+$")) {
-            return true;
-        }
-
-        // Simple Java pattern
-        if(logLine.matches("(?s).*\\w{3} \\d{2}, \\d{4} \\d{2}:\\d{2}:\\d{2} [AP]M .*\\n.*")) {
-            return true;
-        }
-
-        // Log4j style
-        return logLine.matches(".*\\d{4}-\\d{2}-\\d{2}.*\\[.*].*-.*");
-
+        return JAVA_LOG_PATTERNS.stream()
+                .anyMatch(pattern -> pattern.matcher(logLine).matches());
     }
 
     @Override
