@@ -3,6 +3,7 @@ package com.logAnalyzer.core.strategy;
 import com.logAnalyzer.core.model.ParsedLog;
 import com.logAnalyzer.core.strategy.langparser.java.JavaLogParser;
 import com.logAnalyzer.core.strategy.langparser.java.JavaSubParser;
+import com.logAnalyzer.core.service.LogParserConfigService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -12,12 +13,13 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import java.util.regex.Pattern;
 
 class JavaLogParserTest {
 
     @Test
     void isParsable_shouldReturnTrueWhenAnyLineMatchesJavaHint() {
-        JavaLogParser parser = new JavaLogParser(List.of());
+        JavaLogParser parser = parserWithConfiguredRegexes();
 
         assertTrue(parser.isParsable(List.of("2026-09-27 INFO --- [main]")));
         assertTrue(parser.isParsable(List.of("Sep 27, 2026 10:15:30 AM Example method\nERROR: failure")));
@@ -28,14 +30,14 @@ class JavaLogParserTest {
 
     @Test
     void isParsable_shouldReturnFalseWhenNoLineMatches() {
-        JavaLogParser parser = new JavaLogParser(List.of());
+        JavaLogParser parser = parserWithConfiguredRegexes();
 
         assertFalse(parser.isParsable(List.of("plain text")));
     }
 
     @Test
     void isPrimaryLine_shouldRejectContinuationLinesAndAcceptPrimaryLines() {
-        JavaLogParser parser = new JavaLogParser(List.of());
+        JavaLogParser parser = parserWithConfiguredRegexes();
 
         assertFalse(parser.isPrimaryLine(null));
         assertFalse(parser.isPrimaryLine("   "));
@@ -55,7 +57,7 @@ class JavaLogParserTest {
         when(second.canParse("entry")).thenReturn(true);
         when(second.parse("entry")).thenReturn(expected);
 
-        ParsedLog result = new JavaLogParser(List.of(first, second)).parse("entry");
+        ParsedLog result = new JavaLogParser(List.of(first, second), mock(LogParserConfigService.class)).parse("entry");
 
         assertSame(expected, result);
     }
@@ -65,8 +67,19 @@ class JavaLogParserTest {
         JavaSubParser parser = mock(JavaSubParser.class);
         when(parser.canParse("entry")).thenReturn(false);
 
-        ParsedLog result = new JavaLogParser(List.of(parser)).parse("entry");
+        ParsedLog result = new JavaLogParser(List.of(parser), mock(LogParserConfigService.class)).parse("entry");
 
         org.junit.jupiter.api.Assertions.assertEquals("entry", result.getRawLog());
+    }
+
+    private JavaLogParser parserWithConfiguredRegexes() {
+        LogParserConfigService configService = mock(LogParserConfigService.class);
+        when(configService.getLanguagePatterns("java")).thenReturn(List.of(
+                Pattern.compile("(?s).*---.*\\[.*"),
+                Pattern.compile("^\\s*\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\s+[\\w.$]+\\s+[\\w$<>]+\\s*$"),
+                Pattern.compile("(?s).*\\w{3} \\d{2}, \\d{4} \\d{2}:\\d{2}:\\d{2} [AP]M .*\\n.*"),
+                Pattern.compile(".*\\d{4}-\\d{2}-\\d{2}.*\\[.*].*-.*")
+        ));
+        return new JavaLogParser(List.of(), configService);
     }
 }

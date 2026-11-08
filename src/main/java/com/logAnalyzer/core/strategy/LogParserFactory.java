@@ -15,6 +15,6 @@ public class LogParserFactory {
                 .filter(parser -> parser.isParsable(logEntries))
                 .findFirst()
             .orElseThrow(() -> new IllegalArgumentException(
-                "No suitable parser found for log entry: " + logEntries));
+                "No suitable parser found for log entries"));
     }
 }

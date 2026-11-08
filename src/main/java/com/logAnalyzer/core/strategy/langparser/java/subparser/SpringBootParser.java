@@ -5,8 +5,9 @@ import com.logAnalyzer.core.enums.DetectedFramework;
 import com.logAnalyzer.core.enums.LogLevel;
 import com.logAnalyzer.core.model.ParsedLog;
 import com.logAnalyzer.core.util.LogSubParserUtil;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import com.logAnalyzer.core.service.LogParserConfigService;
 
 import java.time.Instant;
 import java.util.regex.Pattern;
@@ -14,16 +15,16 @@ import java.util.regex.Pattern;
 import static com.logAnalyzer.core.util.LogSubParserUtil.parseTimestamp;
 
 @Component
+@RequiredArgsConstructor
 public class SpringBootParser implements JavaSubParser {
 
-    @Value("${log.format.java.spring-boot}")
-    private String logFormat;
+    private final LogParserConfigService configService;
 
     @Override
     public boolean canParse(String logLine) {
         if (logLine == null) return false;
         String headerLine = LogSubParserUtil.extractHeaderLine(logLine);
-        Pattern pattern = Pattern.compile(logFormat);
+        Pattern pattern = getPattern();
         return pattern.matcher(headerLine).find();
     }
 
@@ -34,7 +35,7 @@ public class SpringBootParser implements JavaSubParser {
         
         String headerLine = LogSubParserUtil.extractHeaderLine(logLine);
         String continuationLines = LogSubParserUtil.extractContinuationLines(logLine);
-        Pattern pattern = Pattern.compile(logFormat);
+        Pattern pattern = getPattern();
         var matcher = pattern.matcher(headerLine);
         if (matcher.find()) {
             Instant formattedTimeStamp = parseTimestamp(matcher.group("timestamp"),"");
@@ -57,5 +58,9 @@ public class SpringBootParser implements JavaSubParser {
                     .build();
         }
         return ParsedLog.builder().rawLog(logLine).build();
+    }
+
+    private Pattern getPattern() {
+        return configService.getFrameworkPattern("java", "spring-boot");
     }
 }

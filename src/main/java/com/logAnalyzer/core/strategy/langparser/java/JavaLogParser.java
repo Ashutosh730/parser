@@ -2,28 +2,23 @@ package com.logAnalyzer.core.strategy.langparser.java;
 
 import com.logAnalyzer.core.strategy.LogParser;
 import com.logAnalyzer.core.model.ParsedLog;
-import lombok.RequiredArgsConstructor;
+import com.logAnalyzer.core.service.LogParserConfigService;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
-import java.util.regex.Pattern;
 
 @Component
-@RequiredArgsConstructor
 public class JavaLogParser implements LogParser {
 
-    private static final List<String> JAVA_LOG_REGEXES = List.of(
-            "(?s).*---.*\\[.*",
-            "^\\s*\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\s+[\\w.$]+\\s+[\\w$<>]+\\s*$",
-            "(?s).*\\w{3} \\d{2}, \\d{4} \\d{2}:\\d{2}:\\d{2} [AP]M .*\\n.*",
-            ".*\\d{4}-\\d{2}-\\d{2}.*\\[.*].*-.*"
-    );
-
-    private static final List<Pattern> JAVA_LOG_PATTERNS = JAVA_LOG_REGEXES.stream()
-            .map(Pattern::compile)
-            .toList();
-
     private final List<JavaSubParser> javaSubParser;
+    private final LogParserConfigService configService;
+
+    @Autowired
+    public JavaLogParser(List<JavaSubParser> javaSubParser, LogParserConfigService configService) {
+        this.javaSubParser = javaSubParser;
+        this.configService = configService;
+    }
 
     @Override
     public boolean isParsable(List<String> logLines) {
@@ -38,7 +33,7 @@ public class JavaLogParser implements LogParser {
     private boolean canParse(String logLine) {
         if (logLine == null) return false;
 
-        return JAVA_LOG_PATTERNS.stream()
+        return configService.getLanguagePatterns("java").stream()
                 .anyMatch(pattern -> pattern.matcher(logLine).matches());
     }
 

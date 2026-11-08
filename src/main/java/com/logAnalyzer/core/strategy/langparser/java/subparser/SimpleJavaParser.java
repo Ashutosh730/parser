@@ -4,8 +4,9 @@ import com.logAnalyzer.core.enums.DetectedFramework;
 import com.logAnalyzer.core.strategy.langparser.java.JavaSubParser;
 import com.logAnalyzer.core.enums.LogLevel;
 import com.logAnalyzer.core.model.ParsedLog;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import com.logAnalyzer.core.service.LogParserConfigService;
 
 import java.time.Instant;
 import java.util.regex.Pattern;
@@ -13,20 +14,20 @@ import java.util.regex.Pattern;
 import static com.logAnalyzer.core.util.LogSubParserUtil.parseTimestamp;
 
 @Component
+@RequiredArgsConstructor
 public class SimpleJavaParser implements JavaSubParser {
 
-    @Value("${log.format.java.simple-java}")
-    private String logFormat;
+    private final LogParserConfigService configService;
 
     @Override
     public boolean canParse(String logLine) {
-        Pattern pattern = Pattern.compile(logFormat);
+        Pattern pattern = getPattern();
         return pattern.matcher(logLine).find();
     }
 
     @Override
     public ParsedLog parse(String logLine) {
-        Pattern pattern = Pattern.compile(logFormat);
+        Pattern pattern = getPattern();
         var matcher = pattern.matcher(logLine);
         if(matcher.matches()) {
             Instant formattedTimeStamp = parseTimestamp(matcher.group("timestamp"),"yyyy-MM-dd HH:mm:ss");
@@ -46,5 +47,9 @@ public class SimpleJavaParser implements JavaSubParser {
         return ParsedLog.builder()
                 .rawLog(logLine)
                 .build();
+    }
+
+    private Pattern getPattern() {
+        return configService.getFrameworkPattern("java", "simple-java");
     }
 }

@@ -57,7 +57,7 @@ class LogUploadControllerTest {
     @Mock private MultipartFile file;
     @Mock private UserDetails userDetails;
     @Mock private User user;
-    @Mock private LogSession session;
+    @Mock     private LogSession session;
 
     private LogController controller;
 

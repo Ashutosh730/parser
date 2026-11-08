@@ -1,0 +1,6 @@
+2026-05-02T23:49:08.085+05:30  INFO 15740 --- [parser] [           main] c.logAnalyzer.parser.ParserApplication   : Starting ParserApplication using Java 23.0.2 with PID 15740 (D:\Project\AI_log_analyzer\parser\target\classes started by ashut in D:\Project\AI_log_analyzer)
+2026-05-02T23:49:08.092+05:30  INFO 15740 --- [parser] [           main] c.logAnalyzer.parser.ParserApplication   : No active profile set, falling back to 1 default profile: "default"
+2026-05-02T23:49:09.345+05:30  INFO 15740 --- [parser] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-05-02T23:49:09.383+05:30  INFO 15740 --- [parser] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 24 ms. Found 0 JPA repository interfaces.
+2026-05-02T23:49:10.578+05:30  INFO 15740 --- [parser] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8081 (http)
+2026-05-02T23:49:10.604+05:30  INFO 15740 --- [parser] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
