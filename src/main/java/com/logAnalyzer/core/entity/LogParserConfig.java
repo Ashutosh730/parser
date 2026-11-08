@@ -10,10 +10,7 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(
         name = "log_parser_config",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_log_parser_language_framework",
-                columnNames = {"language", "framework"}
-        )
+        uniqueConstraints = @UniqueConstraint(name = "uk_log_parser_language_framework", columnNames = {"language", "framework"})
 )
 @Getter
 @Setter

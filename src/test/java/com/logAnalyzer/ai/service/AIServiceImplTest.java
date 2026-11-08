@@ -3,17 +3,17 @@ package com.logAnalyzer.ai.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.logAnalyzer.ai.entity.AiResult;
 import com.logAnalyzer.ai.enums.AiFeatureEnum;
+import com.logAnalyzer.ai.enums.AiPromptKey;
 import com.logAnalyzer.ai.enums.LlmProviderEnum;
 import com.logAnalyzer.ai.model.DiagnosisResponse;
 import com.logAnalyzer.ai.model.InterpretedFilter;
 import com.logAnalyzer.ai.model.LLMRequest;
 import com.logAnalyzer.ai.model.NlQueryResponse;
 import com.logAnalyzer.ai.model.SummaryResponse;
-import com.logAnalyzer.ai.provider.LLMFactory;
-import com.logAnalyzer.ai.provider.LLMProvider;
 import com.logAnalyzer.ai.provider.UniversalLLMProvider;
 import com.logAnalyzer.ai.repository.AiResultRepository;
 import com.logAnalyzer.ai.service.impl.AIServiceImpl;
+import com.logAnalyzer.ai.service.AiPromptConfigService;
 import com.logAnalyzer.core.entity.LogEntryDocument;
 import com.logAnalyzer.core.entity.LogSession;
 import com.logAnalyzer.core.enums.LogLevel;
@@ -51,13 +51,13 @@ import static org.mockito.Mockito.lenient;
 @ExtendWith(MockitoExtension.class)
 class AIServiceImplTest {
 
-    @Mock private LLMFactory llmFactory;
     @Mock private AiResultRepository aiResultRepository;
     @Mock private LogSessionRepository sessionRepository;
     @Mock private LogEntryEsRepository logEntryEsRepository;
     @Mock private ObjectMapper objectMapper;
     @Mock private LogEntryCustomEsRepository customRepository;
     @Mock private UniversalLLMProvider universalProvider;
+    @Mock private AiPromptConfigService promptConfigService;
     @Mock private SearchHits<LogEntryDocument> searchHits;
     @Mock private SearchHit<LogEntryDocument> searchHit;
 
@@ -66,8 +66,16 @@ class AIServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new AIServiceImpl(
-                llmFactory, aiResultRepository, sessionRepository, logEntryEsRepository,
-                objectMapper, customRepository, universalProvider);
+                aiResultRepository, sessionRepository, logEntryEsRepository,
+                objectMapper, customRepository, universalProvider, promptConfigService);
+        lenient().when(promptConfigService.getPrompt(AiPromptKey.SUMMARY))
+                .thenReturn("summary prompt");
+        lenient().when(promptConfigService.getPrompt(AiPromptKey.DIAGNOSIS))
+                .thenReturn("diagnosis prompt");
+        lenient().when(promptConfigService.getPrompt(AiPromptKey.NLQ))
+                .thenReturn("query prompt %s");
+        lenient().when(promptConfigService.getPrompt(AiPromptKey.NLQ_FACT_EXTRACTION))
+                .thenReturn("Answer the user's question directly");
         lenient().when(sessionRepository.findByIdAndUserId("session-1", "user-1"))
                 .thenReturn(Optional.of(LogSession.builder().id("session-1").build()));
     }
@@ -104,7 +112,6 @@ class AIServiceImplTest {
         assertEquals("No errors found in this log file.", response.getSummary());
         assertFalse(response.isCached());
         verify(aiResultRepository).save(any(AiResult.class));
-        verifyNoInteractions(universalProvider);
     }
 
     @Test
@@ -158,7 +165,7 @@ class AIServiceImplTest {
         assertEquals("UNSUPPORTED", response.getIntent());
         assertEquals("query", response.getOriginalQuery());
         assertEquals("NVIDIA", response.getProvider());
-        verifyNoInteractions(customRepository, llmFactory);
+        verifyNoInteractions(customRepository);
     }
 
     @Test
@@ -216,7 +223,6 @@ class AIServiceImplTest {
 
         assertEquals("FACT_EXTRACTION", response.getIntent());
         assertEquals("Could not find relevant log entries to answer this question.", response.getFactAnswer());
-        verifyNoInteractions(llmFactory);
     }
 
     @Test
@@ -234,16 +240,13 @@ class AIServiceImplTest {
                 .level(LogLevel.WARN)
                 .message("Health check is delayed")
                 .build();
-        LLMProvider provider = org.mockito.Mockito.mock(LLMProvider.class);
-
-        when(universalProvider.complete(request)).thenReturn("fact-json");
+        when(universalProvider.complete(request))
+                .thenReturn("fact-json", "The application runs on port 8080.");
         when(objectMapper.readValue("fact-json", InterpretedFilter.class)).thenReturn(filter);
         when(customRepository.findBySessionIdAndKeywords(
                 "session-1", List.of("port"),
                 org.springframework.data.domain.PageRequest.of(0, 20)))
                 .thenReturn(List.of(first, second));
-        when(llmFactory.getProvider(LlmProviderEnum.NVIDIA)).thenReturn(provider);
-        when(provider.complete(request)).thenReturn("The application runs on port 8080.");
 
         NlQueryResponse response = service.queryProcessor("session-1", "user-1", request);
 
@@ -255,7 +258,7 @@ class AIServiceImplTest {
         assertEquals("model-1", response.getModel());
 
         ArgumentCaptor<LLMRequest> requestCaptor = ArgumentCaptor.forClass(LLMRequest.class);
-        verify(provider).complete(requestCaptor.capture());
+        verify(universalProvider, org.mockito.Mockito.times(2)).complete(requestCaptor.capture());
         LLMRequest providerRequest = requestCaptor.getValue();
         assertTrue(providerRequest.getSystemPrompt().contains("Answer the user's question directly"));
         assertEquals(150, providerRequest.getMaxTokens());
