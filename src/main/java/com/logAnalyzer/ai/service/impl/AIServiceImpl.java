@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.logAnalyzer.ai.entity.AiResult;
 import com.logAnalyzer.ai.enums.AiFeatureEnum;
+import com.logAnalyzer.ai.enums.AiPromptKey;
 import com.logAnalyzer.ai.enums.QueryIntent;
 import com.logAnalyzer.ai.model.LLMRequest;
 import com.logAnalyzer.ai.model.DiagnosisResponse;
@@ -14,6 +15,7 @@ import com.logAnalyzer.ai.provider.LLMFactory;
 import com.logAnalyzer.ai.provider.UniversalLLMProvider;
 import com.logAnalyzer.ai.repository.AiResultRepository;
 import com.logAnalyzer.ai.service.AIService;
+import com.logAnalyzer.ai.service.AiPromptConfigService;
 import com.logAnalyzer.core.entity.LogEntryDocument;
 import com.logAnalyzer.core.enums.LogLevel;
 import com.logAnalyzer.core.exception.AiResponseParseException;
@@ -42,135 +44,13 @@ import static com.logAnalyzer.ai.enums.QueryIntent.NOT_RECOGNIZED;
 @RequiredArgsConstructor
 public class AIServiceImpl implements AIService {
 
-    private final LLMFactory llmFactory;
     private final AiResultRepository aiResultRepository;
     private final LogSessionRepository sessionRepository;
     private final LogEntryEsRepository logEntryEsRepository;
     private final ObjectMapper objectMapper;
     private final LogEntryCustomEsRepository logEntryCustomEsRepository;
     private final UniversalLLMProvider universalLLMProvider;
-
-    private static final String SUMMARY_PROMPT = """
-             You are an expert log analyst.\s
-             Analyse the provided log errors and give a concise plain-English summary.
-             Include: what went wrong, when it started, how many times it occurred.
-             Keep it under 150 words. Be specific, not generic.
-            \s""";
-
-    private static final String DIAGNOSIS_SYSTEM_PROMPT = """
-            You are a senior backend engineer analysing production log errors.
-            Identify root causes AND provide actionable fixes for each.
-            
-            Respond ONLY in the following JSON format, no extra text:
-            {
-                "rootCauses": [
-                    {
-                        "cause": "specific root cause description",
-                        "confidence": 0.9,
-                        "affectedComponents": ["ServiceName", "ClassName"],
-                        "firstOccurrence": "timestamp",
-                        "frequency": 12,
-                        "fixes": [
-                            {
-                                "suggestion": "specific actionable fix",
-                                "category": "CONFIGURATION | CODE_CHANGE | INFRASTRUCTURE | MONITORING",
-                                "priority": "HIGH | MEDIUM | LOW"
-                            }
-                        ]
-                    }
-                ],
-                "timeline": "brief description of how the failure progressed",
-                "impactSummary": "what was the impact on the system",
-                "preventiveActions": ["general advice to prevent similar issues"]
-            }
-            
-            Rules:
-            - Maximum 3 root causes, ordered by confidence descending
-            - Each root cause has 1-2 specific fixes directly addressing it
-            - Be specific — "Increase HikariCP maximum-pool-size to 20" not "increase pool size"
-            - Maximum 3 prevention tips
-            """;
-
-    private static final String NLQ_SYSTEM_PROMPT = """
-            You are a query translator for a log search system.
-            First determine the QUERY INTENT, then extract relevant fields.
-            
-            Current timestamp: %s
-            
-            Respond ONLY in this JSON format, no extra text:
-            {
-                "intent": "SEARCH" | "AGGREGATION" | "UNSUPPORTED" | "FACT_EXTRACTION",
-                "keywords": ["specific", "search", "terms"],
-                "levels": ["ERROR", "WARN", "INFO", "DEBUG", null],
-                "timeFrom": "ISO-8601 timestamp or null",
-                "timeTo": "ISO-8601 timestamp or null",
-                "className": "specific class/service name or null",
-                "aggregationType": "COUNT_BY_LEVEL" | "TOP_ERRORS" | "ERROR_TIMELINE" | null,
-                "explanation": "one sentence describing your interpretation"
-            }
-            
-            Intent rules:
-            - SEARCH = user wants to see specific log entries
-              e.g. "show me database errors", "find NPE exceptions", "errors from last night"
-            - AGGREGATION = user wants counts, stats, or summaries
-              e.g. "how many errors", "count of warn and error", "top errors", "error trend"
-            - FACT_EXTRACTION = user wants a specific fact answered directly
-                  e.g. "which port is running", "when did app start",
-                       "what database is connected", "which Java version"
-            - UNSUPPORTED = destructive action or out of scope
-              e.g. "delete logs", "fix this error", "compare with yesterday's file"
-            
-            Keyword rules:
-            - SEARCH intent: extract specific technical terms only
-              e.g. "database", "timeout", "NullPointerException", "connection refused"
-              do NOT include: "show", "find", "get", "errors", "logs", "warnings"
-            - AGGREGATION intent: keywords must always be empty []
-              aggregation queries don't filter by keyword — they count everything
-            
-            Levels rules:
-            - Always return as array — ["ERROR"] not "ERROR"
-            - Empty array [] if user didn't specify any level
-            - Valid values: "ERROR", "WARN", "INFO", "DEBUG"
-            - "errors and warnings" → ["ERROR", "WARN"]
-            - "everything except debug" → ["ERROR", "WARN", "INFO"]
-            - "all logs" or no mention → []
-            - AGGREGATION intent: still extract levels if mentioned
-              "count of errors and warnings" → levels: ["ERROR", "WARN"]
-              "count of all levels" → levels: []
-            
-            Time rules:
-            - "last night" = yesterday 18:00:00 to today 06:00:00
-            - "today" = today 00:00:00 to current timestamp
-            - "yesterday" = yesterday 00:00:00 to yesterday 23:59:59
-            - "last hour" = current timestamp minus 1 hour to current timestamp
-            - "last 30 minutes" = current timestamp minus 30 minutes to current timestamp
-            - null if no time mentioned
-            
-            AggregationType rules (only when intent = AGGREGATION):
-            - "COUNT_BY_LEVEL" = user wants counts grouped by level
-              e.g. "count of errors and warnings", "how many errors", "breakdown of log levels"
-            - "TOP_ERRORS" = user wants most frequent error messages
-              e.g. "top errors", "most common errors", "frequent errors"
-            - "ERROR_TIMELINE" = user wants error counts over time
-              e.g. "error trend", "errors per hour", "error timeline"
-            - null if intent is SEARCH or UNSUPPORTED
-            
-            className rules:
-            - Extract only if user mentions a specific class or service name
-              e.g. "UserService", "PaymentController", "com.example.OrderService"
-            - null otherwise
-            """;
-
-    private final String NLQ_FACT_EXTRACTION_SYSTEM_PROMPT = """
-            You are a log analyst.
-            Answer the user's question directly.
-            and concisely based only on the provided log entries.
-            Give a one or two sentence direct answer.
-            Include the specific value (port number, version, etc.) in your answer.
-            If the answer is not found in the logs, say exactly:
-            "This information was not found in the log entries."
-            Do not guess or use information outside the provided logs.
-            """;
+    private final AiPromptConfigService promptConfigService;
 
     @Override
     public SummaryResponse summarizeLogs(String sessionId, String userId, LLMRequest request) {
@@ -201,7 +81,7 @@ public class AIServiceImpl implements AIService {
                     .build();
         }
 
-        request.setSystemPrompt(SUMMARY_PROMPT);
+        request.setSystemPrompt(promptConfigService.getPrompt(AiPromptKey.SUMMARY));
         request.setUserPrompt(buildUserPrompt(errors));
         request.setMaxTokens(300);
         request.setTemperature(0.3);
@@ -259,7 +139,7 @@ public class AIServiceImpl implements AIService {
                     .build();
         }
 
-        request.setSystemPrompt(DIAGNOSIS_SYSTEM_PROMPT);
+        request.setSystemPrompt(promptConfigService.getPrompt(AiPromptKey.DIAGNOSIS));
         request.setUserPrompt(buildUserPrompt(errors));
         request.setMaxTokens(1500);      // more than summary — structured JSON needs space
         request.setTemperature(0.5);
@@ -281,7 +161,8 @@ public class AIServiceImpl implements AIService {
         validateSessionOwnership(sessionId, userId);
         request = validateLlmRequest(request);
 
-        String systemPrompt = NLQ_SYSTEM_PROMPT.formatted(LocalDateTime.now());
+        String systemPrompt = promptConfigService.getPrompt(AiPromptKey.NLQ)
+                .formatted(LocalDateTime.now());
         request.setSystemPrompt(systemPrompt);
         request.setMaxTokens(300);
         request.setTemperature(0.2);   // fully deterministic — same query = same filter
@@ -369,7 +250,7 @@ public class AIServiceImpl implements AIService {
                 .collect(Collectors.joining("\n"));
 
         String initialUserPrompt = request.getUserPrompt();
-        request.setSystemPrompt(NLQ_FACT_EXTRACTION_SYSTEM_PROMPT);
+        request.setSystemPrompt(promptConfigService.getPrompt(AiPromptKey.NLQ_FACT_EXTRACTION));
         request.setMaxTokens(150);
         request.setTemperature(0.0);
         request.setUserPrompt(request.getUserPrompt() + "\n\nLog Context:\n" + logContext);

@@ -1,6 +1,5 @@
 package com.logAnalyzer.core.service;
 
-import com.logAnalyzer.core.entity.LogParserConfig;
 import com.logAnalyzer.core.repository.LogParserConfigRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
