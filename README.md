@@ -739,6 +739,13 @@ aiResultRepository.findBySessionIdAndFeature(sessionId, feature)
 
 ## 8. API Reference
 
+The service publishes an OpenAPI 3 contract and Swagger UI when running:
+
+- Swagger UI: `http://localhost:8081/swagger-ui.html`
+- OpenAPI JSON: `http://localhost:8081/v3/api-docs`
+
+Use the **Authorize** button in Swagger UI to provide a JWT as a bearer token. Authentication endpoints remain public; log and AI endpoints require JWT authentication.
+
 ### Auth (confirmed from `AuthController`)
 
 | Method | Path | Auth | Body | Response |
