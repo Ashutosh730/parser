@@ -15,6 +15,7 @@ import com.logAnalyzer.core.service.SessionService;
 import com.logAnalyzer.core.service.StorageService;
 import com.logAnalyzer.core.util.LogFileUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -39,6 +40,7 @@ import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
+@Slf4j
 public class LogController {
 
     private final StorageService storageService;
@@ -78,8 +80,15 @@ public class LogController {
             throw new StorageException("Failed to read uploaded file", e);
         }
 
-        sessionService.create(file.getOriginalFilename(), stored.key(), userId, sessionId);
-        pipelineService.enqueueFile(sessionId, stored.key());
+        boolean sessionCreated = false;
+        try {
+            sessionService.create(file.getOriginalFilename(), stored.key(), userId, sessionId);
+            sessionCreated = true;
+            pipelineService.enqueueFile(sessionId, stored.key());
+        } catch (RuntimeException failure) {
+            compensateUploadFailure(stored.key(), sessionId, userId, sessionCreated);
+            throw failure;
+        }
 
         return ResponseEntity.accepted()
                 .body(SessionResponse.builder()
@@ -87,6 +96,19 @@ public class LogController {
                         .fileName(file.getOriginalFilename())
                         .sessionId(sessionId)
                         .build());
+    }
+
+    private void compensateUploadFailure(String storageKey, String sessionId, String userId,
+                                         boolean sessionCreated) {
+        try {
+            if (sessionCreated) {
+                sessionService.delete(sessionId, userId);
+            } else {
+                storageService.delete(storageKey);
+            }
+        } catch (RuntimeException cleanupFailure) {
+            log.error("Failed to compensate upload for session {}", sessionId, cleanupFailure);
+        }
     }
 
     @GetMapping("/log")
