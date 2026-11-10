@@ -42,6 +42,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -158,6 +159,45 @@ class LogUploadControllerTest {
 
         assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
         verify(pipelineService).enqueueFile(anyString(), eq("logs/application.log"));
+    }
+
+    @Test
+    void upload_shouldDeleteStoredObjectWhenSessionCreationFails() throws Exception {
+        givenValidFileAndUser();
+        when(file.getInputStream()).thenReturn(new ByteArrayInputStream("INFO startup\n".getBytes(StandardCharsets.UTF_8)));
+        when(file.getSize()).thenReturn(12L);
+        when(file.getContentType()).thenReturn("text/plain");
+        when(storageService.store(any(StoreRequest.class)))
+                .thenReturn(new StoredObject("logs/application.log", 12L, "text/plain", "local"));
+        when(sessionService.create(anyString(), eq("logs/application.log"), eq("user-1"), anyString()))
+                .thenThrow(new RuntimeException("Session creation failure"));
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> controller.upload(file, userDetails));
+
+        assertEquals("Session creation failure", exception.getMessage());
+        verify(storageService).delete("logs/application.log");
+        verifyNoInteractions(pipelineService);
+    }
+
+    @Test
+    void upload_shouldDeleteSessionWhenQueueSubmissionFails() throws Exception {
+        givenValidFileAndUser();
+        when(file.getInputStream()).thenReturn(new ByteArrayInputStream("INFO startup\n".getBytes(StandardCharsets.UTF_8)));
+        when(file.getSize()).thenReturn(12L);
+        when(file.getContentType()).thenReturn("text/plain");
+        when(storageService.store(any(StoreRequest.class)))
+                .thenReturn(new StoredObject("logs/application.log", 12L, "text/plain", "local"));
+        when(sessionService.create(anyString(), eq("logs/application.log"), eq("user-1"), anyString()))
+                .thenReturn("session-1");
+        doThrow(new RuntimeException("Queue submission failure"))
+                .when(pipelineService).enqueueFile(anyString(), eq("logs/application.log"));
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> controller.upload(file, userDetails));
+
+        assertEquals("Queue submission failure", exception.getMessage());
+        verify(sessionService).delete(anyString(), eq("user-1"));
     }
 
     @Test
