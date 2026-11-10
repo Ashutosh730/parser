@@ -15,6 +15,7 @@ import com.logAnalyzer.core.service.LogPipelineService;
 import com.logAnalyzer.core.service.SessionService;
 import com.logAnalyzer.core.service.StorageService;
 import com.logAnalyzer.core.util.LogFileUtil;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -40,6 +41,7 @@ import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
 
 @RestController
 @RequestMapping("/api")
+@SecurityRequirement(name = "bearerAuth")
 @RequiredArgsConstructor
 @Slf4j
 public class LogController {

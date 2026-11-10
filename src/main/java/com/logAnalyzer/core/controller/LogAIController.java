@@ -7,6 +7,7 @@ import com.logAnalyzer.ai.model.SummaryResponse;
 import com.logAnalyzer.ai.service.AIService;
 import com.logAnalyzer.auth.repository.UserRepository;
 import com.logAnalyzer.core.exception.AiResponseParseException;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/ai")
+@SecurityRequirement(name = "bearerAuth")
 @RequiredArgsConstructor
 public class LogAIController {
 
