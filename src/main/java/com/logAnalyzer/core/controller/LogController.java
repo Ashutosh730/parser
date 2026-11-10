@@ -113,9 +113,7 @@ public class LogController {
     }
 
     @GetMapping("/sessions/{sessionId}/download")
-    public ResponseEntity<StreamingResponseBody> download(
-            @PathVariable String sessionId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<StreamingResponseBody> download(@PathVariable String sessionId, @AuthenticationPrincipal UserDetails userDetails) {
 
         String userId = getUserId(userDetails);
         LogSession session = sessionRepository.findByIdAndUserIdAndDeletedAtIsNull(sessionId, userId)
