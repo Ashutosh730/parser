@@ -37,13 +37,19 @@ public class AiPromptConfig {
     @Column(name = "system_prompt", nullable = false, columnDefinition = "TEXT")
     private String systemPrompt;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(
+            name = "created_at", nullable = false,
+            columnDefinition = "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP"
+    )
     private OffsetDateTime createdAt;
 
     @Column(name = "created_by", length = 100)
     private String createdBy;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(
+            name = "updated_at", nullable = false,
+            columnDefinition = "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP"
+    )
     private OffsetDateTime updatedAt;
 
     @Column(name = "updated_by", length = 100)
