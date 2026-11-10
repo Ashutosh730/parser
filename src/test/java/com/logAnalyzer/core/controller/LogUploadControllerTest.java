@@ -4,6 +4,7 @@ import com.logAnalyzer.core.model.StorageProperties;
 import com.logAnalyzer.auth.entity.User;
 import com.logAnalyzer.auth.repository.UserRepository;
 import com.logAnalyzer.core.entity.LogSession;
+import com.logAnalyzer.core.exception.SessionNotFoundException;
 import com.logAnalyzer.core.mapper.SessionMapper;
 import com.logAnalyzer.core.model.PagedResponse;
 import com.logAnalyzer.core.model.SessionResponse;
@@ -29,6 +30,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
@@ -300,6 +302,42 @@ class LogUploadControllerTest {
         assertThrows(UsernameNotFoundException.class,
                 () -> controller.getSessionById("session-1", userDetails));
         verifyNoInteractions(sessionRepository);
+    }
+
+    @Test
+    void download_shouldStreamOwnedSessionFile() throws Exception {
+        givenUser();
+        LogSession ownedSession = LogSession.builder()
+                .id("session-1")
+                .userId("user-1")
+                .fileName("application.log")
+                .storagePath("logs/application.log")
+                .build();
+        when(sessionRepository.findByIdAndUserIdAndDeletedAtIsNull("session-1", "user-1"))
+                .thenReturn(Optional.of(ownedSession));
+        when(storageService.openStream("logs/application.log"))
+                .thenReturn(new ByteArrayInputStream("log content".getBytes(StandardCharsets.UTF_8)));
+
+        ResponseEntity<org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody> response =
+                controller.download("session-1", userDetails);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("application/octet-stream", response.getHeaders().getContentType().toString());
+        assertNotNull(response.getBody());
+        response.getBody().writeTo(new ByteArrayOutputStream());
+        verify(storageService).openStream("logs/application.log");
+    }
+
+    @Test
+    void download_shouldRejectSessionOwnedByAnotherUser() {
+        givenUser();
+        when(sessionRepository.findByIdAndUserIdAndDeletedAtIsNull("session-1", "user-1"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(SessionNotFoundException.class,
+                () -> controller.download("session-1", userDetails));
+
+        verifyNoInteractions(storageService);
     }
 
     private void givenValidFile() {
