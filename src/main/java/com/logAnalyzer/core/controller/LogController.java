@@ -3,6 +3,7 @@ package com.logAnalyzer.core.controller;
 import com.logAnalyzer.core.model.StorageProperties;
 import com.logAnalyzer.auth.repository.UserRepository;
 import com.logAnalyzer.core.entity.LogSession;
+import com.logAnalyzer.core.exception.SessionNotFoundException;
 import com.logAnalyzer.core.exception.StorageException;
 import com.logAnalyzer.core.mapper.SessionMapper;
 import com.logAnalyzer.core.model.PagedResponse;
@@ -21,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.ContentDisposition;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -30,7 +32,6 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -111,17 +112,25 @@ public class LogController {
         }
     }
 
-    @GetMapping("/log")
-    public ResponseEntity<StreamingResponseBody> download(@RequestParam String key, @RequestParam long exp, @RequestParam String sig) {
+    @GetMapping("/sessions/{sessionId}/download")
+    public ResponseEntity<StreamingResponseBody> download(
+            @PathVariable String sessionId,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
-        if (exp < Instant.now().getEpochSecond()) {
-            return ResponseEntity.status(410).build();
-        }
+        String userId = getUserId(userDetails);
+        LogSession session = sessionRepository.findByIdAndUserIdAndDeletedAtIsNull(sessionId, userId)
+                .orElseThrow(() -> new SessionNotFoundException("SessionId not found: " + sessionId));
 
-        InputStream in = storageService.openStream(key);
-        StreamingResponseBody body = out -> in.transferTo(out);
+        StreamingResponseBody body = outputStream -> {
+            try (InputStream inputStream = storageService.openStream(session.getStoragePath())) {
+                inputStream.transferTo(outputStream);
+            }
+        };
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header("Content-Disposition", ContentDisposition.attachment()
+                        .filename(session.getFileName() == null ? "download" : session.getFileName())
+                        .build().toString())
                 .body(body);
     }
 

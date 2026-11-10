@@ -754,7 +754,7 @@ aiResultRepository.findBySessionIdAndFeature(sessionId, feature)
 | `POST` | `/api/logs/upload` | Multipart upload; optional `?format=spring-boot\|log4j\|simple-java` |
 | `GET` | `/api/logs` | List the caller's sessions |
 | `GET` | `/api/logs/{sessionId}` | Session metadata (status, counts) |
-| `GET` | `/api/logs/{sessionId}/download` | Presigned URL / static URL for the original file |
+| `GET` | `/api/logs/{sessionId}/download` | Streams the original file after verifying session ownership |
 | `DELETE` | `/api/logs/{sessionId}` | Delete session, ES docs, stored object, cached AI results |
 
 **Upload request**
